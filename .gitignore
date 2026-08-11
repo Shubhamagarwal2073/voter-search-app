@@ -1,0 +1,31 @@
+# Environments
+venv/
+env/
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node/Next.js
+nextjs-search-app/node_modules/
+nextjs-search-app/.next/
+nextjs-search-app/out/
+nextjs-search-app/build/
+nextjs-search-app/.env.local
+nextjs-search-app/.env.development.local
+nextjs-search-app/.env.test.local
+nextjs-search-app/.env.production.local
+
+# Temporary Files and Big Data
+*.pdf
+temp_pages/
+temp_page*.pdf
+
+# IDEs and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
