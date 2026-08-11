@@ -15,7 +15,7 @@
     "react-dom": "19.2.8",
     "react-transliterate": "^1.1.9",
     "sqlite": "^5.1.1",
-    "sqlite3": "^6.0.1"
+    "sqlite3": "5.1.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
