@@ -34,22 +34,31 @@ export async function GET(request: Request) {
       } else if (type === 'serial') {
         voters = await db.all(`SELECT * FROM voters WHERE serial_number = ? ${wardClause} LIMIT 50`, [parseInt(query, 10), ...wardParam]);
       } else {
-        // --- FUZZY SEARCH FOR NAMES ---
-        // 1. Fetch the subset of voters (filtered by ward if applicable)
-        const allVotersQuery = `SELECT * FROM voters ${wardClause ? 'WHERE ' + wardClause.replace('AND ', '') : ''}`;
-        const allVotersForWard = await db.all(allVotersQuery, wardParam);
-        
-        // 2. Use Fuse.js to find the closest phonetic/fuzzy matches
-        const Fuse = (await import('fuse.js')).default;
-        const fuse = new Fuse(allVotersForWard, {
-          keys: ['name_hi', 'relative_name_hi'],
-          threshold: 0.4, // Allows for matra and spelling differences
-          ignoreLocation: true,
-        });
+        // --- HYBRID SEARCH FOR NAMES ---
+        // 1. First, try an EXACT substring match (fastest and most accurate)
+        const exactQuery = `%${query}%`;
+        const exactSql = `SELECT * FROM voters WHERE (name_hi LIKE ? OR relative_name_hi LIKE ?) ${wardClause} LIMIT 50`;
+        const exactResults = await db.all(exactSql, [exactQuery, exactQuery, ...wardParam]);
 
-        // 3. Map results back and limit to 50
-        const fuzzyResults = fuse.search(query);
-        voters = fuzzyResults.map(result => result.item).slice(0, 50);
+        if (exactResults.length > 0) {
+          // If we found exact matches (e.g. they typed the name perfectly), return them!
+          voters = exactResults;
+        } else {
+          // 2. If ZERO exact matches found, they probably made a spelling/matra mistake. 
+          // Fall back to a strict fuzzy search!
+          const allVotersQuery = `SELECT * FROM voters ${wardClause ? 'WHERE ' + wardClause.replace('AND ', '') : ''}`;
+          const allVotersForWard = await db.all(allVotersQuery, wardParam);
+          
+          const Fuse = (await import('fuse.js')).default;
+          const fuse = new Fuse(allVotersForWard, {
+            keys: ['name_hi', 'relative_name_hi'],
+            threshold: 0.2, // Strict threshold to prevent random matches
+            ignoreLocation: true,
+          });
+
+          const fuzzyResults = fuse.search(query);
+          voters = fuzzyResults.map(result => result.item).slice(0, 50);
+        }
       }
     } else {
       // If no query, just return a few recent ones, respecting ward
