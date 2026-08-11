@@ -2,7 +2,7 @@ import sqlite3
 import os
 
 # Store DB inside Next.js data folder so Vercel can access it
-DB_PATH = os.path.join(os.path.dirname(__file__), 'nextjs-search-app', 'data', 'voters.db')
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'nextjs-search-app', 'data', 'voters.db')
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
 def get_connection():
