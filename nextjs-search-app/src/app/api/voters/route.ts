@@ -10,7 +10,7 @@ const dbPath = path.resolve(process.cwd(), 'data', 'voters.db');
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get('q') || '';
+  const query = (searchParams.get('q') || '').trim();
   const type = searchParams.get('type') || 'name'; // 'name', 'voter_id', 'house', 'serial'
   const ward = searchParams.get('ward') || ''; // optional ward filter
 

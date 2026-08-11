@@ -51,19 +51,20 @@ def parse_specific_pages(pdf_path: str, pages_to_scan: list, ward: int = None):
             source_filename = os.path.basename(pdf_path)
             filtered_voters = []
             for v in voters:
-                # Ensure the serial number is strictly greater than 1348
-                try:
-                    sn = int(v.get('serial_number', 0))
-                    if sn <= 1348:
-                        print(f"    Skipping serial {sn} (must be > 1348)")
-                        continue
-                except ValueError:
+                # Filter out deleted or shifted voters
+                if v.get('is_deleted_or_shifted', False):
                     continue
                 
-                # FIX: If voter_id is empty, they will all conflict and overwrite each other!
-                # Give them a temporary unique ID if they don't have one on the printed page.
-                if not v.get('voter_id') or str(v.get('voter_id')).strip() == "":
-                    v['voter_id'] = f"TEMP_ID_{sn}"
+                # Strip leading/trailing spaces from all string fields
+                for key, value in v.items():
+                    if isinstance(value, str):
+                        v[key] = value.strip()
+                
+                # Assign temporary unique ID if they don't have one
+                if not v.get('voter_id') or str(v.get('voter_id')) == "":
+                    sn = v.get('serial_number', 0)
+                    ward_str = str(ward) if ward is not None else "0"
+                    v['voter_id'] = f"TEMP_ID_W{ward_str}_{sn}"
                 
                 if ward is not None:
                     v['ward'] = ward
@@ -96,13 +97,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("pdf_path", help="Path to PDF")
     parser.add_argument("--ward", type=int, default=5)
+    parser.add_argument("--pages", type=int, nargs="+", required=True, help="List of specific pages to rescan (e.g. --pages 7 27 33)")
     args = parser.parse_args()
 
     init_db()
     
-    target_pages = [55, 56]
-    parse_specific_pages(args.pdf_path, target_pages, args.ward)
-    print("Specific page rescanning complete for new entries (> 1348)!")
+    parse_specific_pages(args.pdf_path, args.pages, args.ward)
+    print(f"Specific page rescanning complete for pages {args.pages}!")
 
 if __name__ == "__main__":
     main()

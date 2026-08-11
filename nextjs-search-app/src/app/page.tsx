@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ReactTransliterate } from 'react-transliterate';
 import 'react-transliterate/dist/index.css';
+import DatabaseStatsModal from '@/components/DatabaseStatsModal';
 
 export default function Home() {
   const [query, setQuery] = useState('');
@@ -12,6 +13,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [totalVoters, setTotalVoters] = useState<number>(0);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [showStatsModal, setShowStatsModal] = useState(false);
 
   const toggleRow = (id: number) => {
     const newExpanded = new Set(expandedRows);
@@ -88,11 +90,23 @@ export default function Home() {
             <h1 className="text-2xl md:text-4xl font-bold text-white tracking-tight">Electoral Roll Search</h1>
             <p className="text-[#8c909f] mt-1 md:mt-2 text-sm md:text-base">Unofficial Secure Voter Lookup Portal</p>
           </div>
-          <div className="px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs md:text-sm font-medium flex items-center gap-2 self-start md:self-auto shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+          <button 
+            onClick={() => setShowStatsModal(true)}
+            className="px-4 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-xs md:text-sm font-medium flex items-center gap-2 self-start md:self-auto shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all group"
+          >
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
             Live Database {totalVoters > 0 && <span className="opacity-80 ml-1">({totalVoters.toLocaleString()} Records)</span>}
-          </div>
+            <svg className="w-4 h-4 ml-1 opacity-50 group-hover:opacity-100 transition-opacity hidden md:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
         </header>
+
+        {/* Database Stats Modal */}
+        <DatabaseStatsModal 
+          isOpen={showStatsModal} 
+          onClose={() => setShowStatsModal(false)} 
+        />
 
         {/* Search Section (Glass Card) */}
         <section className="bg-[#0f172a]/60 backdrop-blur-xl border border-white/10 rounded-xl p-5 md:p-8 mb-8 md:mb-12 shadow-2xl">
