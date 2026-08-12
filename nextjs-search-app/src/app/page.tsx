@@ -14,6 +14,14 @@ export default function Home() {
   const [totalVoters, setTotalVoters] = useState<number>(0);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize(); // Set initially
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const toggleRow = (id: number) => {
     const newExpanded = new Set(expandedRows);
@@ -108,76 +116,82 @@ export default function Home() {
           onClose={() => setShowStatsModal(false)} 
         />
             
-        {/* Mascot Search Section (Desktop Only) */}
-        <section className="hidden md:flex relative w-full max-w-4xl mx-auto mb-12 justify-center items-center group">
-          {/* Mascot Background */}
-          <div className="relative w-full max-w-3xl mx-auto transition-transform duration-500 md:scale-110 origin-top md:-mt-20 lg:-mt-32 md:-mb-32 z-10">
-            <img 
-              src="/mascot_transparent.png" 
-              alt="Search Mascot" 
-              className="w-full h-auto opacity-90 block pointer-events-none"
-              style={{
-                maskImage: 'linear-gradient(to bottom, black 72%, transparent 82%)',
-                WebkitMaskImage: 'linear-gradient(to bottom, black 72%, transparent 82%)'
-              }}
-            />
-            
-            {/* Interactive Tablet Overlay (Exactly mapping the tablet coordinates) */}
-            <div className="absolute flex flex-col justify-center items-center" style={{ top: '44%', left: '32%', width: '37%', height: '26%' }}>
-              <div className="w-full h-full flex flex-col justify-center px-1">
-                
-                <form onSubmit={handleSearch} className="flex flex-col gap-1.5 w-full">
-                  <div className="relative">
-                    <ReactTransliterate
-                      value={query}
-                      onChangeText={(text) => setQuery(text)}
-                      lang="hi"
-                      placeholder="Search..."
-                      containerClassName={`w-full ${query.length === 0 ? 'hide-suggestions' : ''}`}
-                      className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-1 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
-                    />
-                  </div>
+        {/* Conditional rendering to prevent duplicate DOM issues with ReactTransliterate */}
+        {isMobile === null ? (
+          <div className="h-48 md:h-96 flex items-center justify-center opacity-50">
+            <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+          </div>
+        ) : !isMobile ? (
+          {/* Mascot Search Section (Desktop Only) */}
+          <section className="relative w-full max-w-4xl mx-auto mb-12 flex justify-center items-center group">
+            {/* Mascot Background */}
+            <div className="relative w-full max-w-3xl mx-auto transition-transform duration-500 scale-110 origin-top -mt-20 lg:-mt-32 -mb-32 z-10">
+              <img 
+                src="/mascot_transparent.png" 
+                alt="Search Mascot" 
+                className="w-full h-auto opacity-90 block pointer-events-none"
+                style={{
+                  maskImage: 'linear-gradient(to bottom, black 72%, transparent 82%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, black 72%, transparent 82%)'
+                }}
+              />
+              
+              {/* Interactive Tablet Overlay (Exactly mapping the tablet coordinates) */}
+              <div className="absolute flex flex-col justify-center items-center" style={{ top: '44%', left: '32%', width: '37%', height: '26%' }}>
+                <div className="w-full h-full flex flex-col justify-center px-1">
                   
-                  <div className="flex flex-col gap-0.5">
-                    <select
-                      value={searchType}
-                      onChange={(e) => setSearchType(e.target.value)}
-                      className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-0.5 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
-                    >
-                      <option value="name">Name</option>
-                      <option value="voter_id">Voter ID</option>
-                      <option value="house">House No.</option>
-                      <option value="serial">Serial No.</option>
-                    </select>
+                  <form onSubmit={handleSearch} className="flex flex-col gap-1.5 w-full">
+                    <div className="relative">
+                      <ReactTransliterate
+                        value={query}
+                        onChangeText={(text) => setQuery(text)}
+                        lang="hi"
+                        placeholder="Search..."
+                        containerClassName={`w-full ${query.length === 0 ? 'hide-suggestions' : ''}`}
+                        className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-1 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
+                      />
+                    </div>
                     
-                    <select
-                      value={ward}
-                      onChange={(e) => setWard(e.target.value)}
-                      className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-0.5 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
+                    <div className="flex flex-col gap-0.5">
+                      <select
+                        value={searchType}
+                        onChange={(e) => setSearchType(e.target.value)}
+                        className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-0.5 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
+                      >
+                        <option value="name">Name</option>
+                        <option value="voter_id">Voter ID</option>
+                        <option value="house">House No.</option>
+                        <option value="serial">Serial No.</option>
+                      </select>
+                      
+                      <select
+                        value={ward}
+                        onChange={(e) => setWard(e.target.value)}
+                        className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-0.5 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
+                      >
+                        <option value="">All Wards</option>
+                        {availableWards.map(w => (
+                          <option key={w} value={w.toString()}>Ward {w}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="mt-1 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded shadow-md hover:shadow-lg transition-all disabled:opacity-50 h-7 w-full text-xs"
                     >
-                      <option value="">All Wards</option>
-                      {availableWards.map(w => (
-                        <option key={w} value={w.toString()}>Ward {w}</option>
-                      ))}
-                    </select>
-                  </div>
+                      {loading ? '...' : 'SEARCH'}
+                    </button>
+                  </form>
 
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="mt-1 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded shadow-md hover:shadow-lg transition-all disabled:opacity-50 h-7 w-full text-xs"
-                  >
-                    {loading ? '...' : 'SEARCH'}
-                  </button>
-                </form>
-
+                </div>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* Traditional Search Section (Mobile Only) */}
-        <section className="md:hidden bg-[#0f172a]/60 backdrop-blur-xl border border-white/10 rounded-xl p-5 mb-8 shadow-2xl">
+          </section>
+        ) : (
+          {/* Traditional Search Section (Mobile Only) */}
+          <section className="bg-[#0f172a]/60 backdrop-blur-xl border border-white/10 rounded-xl p-5 mb-8 shadow-2xl">
           <form onSubmit={handleSearch} className="flex flex-col gap-5">
             <div className="flex flex-col gap-4 items-stretch">
               <div className="flex-1">
@@ -234,6 +248,7 @@ export default function Home() {
             </div>
           </form>
         </section>
+        )}
 
         {/* Results Section */}
         <section>
