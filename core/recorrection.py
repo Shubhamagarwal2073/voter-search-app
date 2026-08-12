@@ -170,7 +170,7 @@ def check_accuracy_and_heal(pdf_path: str, ward: int):
             if page_failed:
                 flagged_pages.append(page_num)
             else:
-                print(f"  ✅ Page {page_num} passed QA.")
+                print(f"  [PASS] Page {page_num} passed QA.")
                 
         except Exception as e:
             print(f"Failed to QA process page {page_num}: {e}")
@@ -189,12 +189,12 @@ def check_accuracy_and_heal(pdf_path: str, ward: int):
         pass
         
     if flagged_pages:
-        print(f"\n🚨 QA Complete. Found {len(flagged_pages)} corrupted pages: {flagged_pages}")
+        print(f"\n[ALERT] QA Complete. Found {len(flagged_pages)} corrupted pages: {flagged_pages}")
         print("Triggering automatic rescan (Auto-Heal) for flagged pages...")
         parse_specific_pages(pdf_path, flagged_pages, ward)
-        print("\n✨ Auto-Heal Complete! Database has been recorrected.")
+        print("\n[SUCCESS] Auto-Heal Complete! Database has been recorrected.")
     else:
-        print("\n✨ QA Complete. ZERO errors found! Your database is perfect.")
+        print("\n[SUCCESS] QA Complete. ZERO errors found! Your database is perfect.")
         
 def main():
     parser = argparse.ArgumentParser(description="Run QA sampling and auto-heal on a Ward PDF.")
