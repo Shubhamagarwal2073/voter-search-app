@@ -122,7 +122,6 @@ export default function Home() {
             <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
           </div>
         ) : !isMobile ? (
-          {/* Mascot Search Section (Desktop Only) */}
           <section className="relative w-full max-w-4xl mx-auto mb-12 flex justify-center items-center group">
             {/* Mascot Background */}
             <div className="relative w-full max-w-3xl mx-auto transition-transform duration-500 scale-110 origin-top -mt-20 lg:-mt-32 -mb-32 z-10">
@@ -190,7 +189,6 @@ export default function Home() {
             </div>
           </section>
         ) : (
-          {/* Traditional Search Section (Mobile Only) */}
           <section className="bg-[#0f172a]/60 backdrop-blur-xl border border-white/10 rounded-xl p-5 mb-8 shadow-2xl">
           <form onSubmit={handleSearch} className="flex flex-col gap-5">
             <div className="flex flex-col gap-4 items-stretch">
