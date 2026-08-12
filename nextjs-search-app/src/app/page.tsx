@@ -107,11 +107,11 @@ export default function Home() {
           isOpen={showStatsModal} 
           onClose={() => setShowStatsModal(false)} 
         />
-
-        {/* Mascot Search Section */}
-        <section className="relative w-full max-w-4xl mx-auto mb-12 flex justify-center items-center group">
+            
+        {/* Mascot Search Section (Desktop Only) */}
+        <section className="hidden md:flex relative w-full max-w-4xl mx-auto mb-12 justify-center items-center group">
           {/* Mascot Background */}
-          <div className="relative w-full max-w-3xl mx-auto transition-transform duration-500 scale-[2.0] sm:scale-[1.8] md:scale-110 origin-top -mt-10 md:-mt-20 lg:-mt-32 mb-48 sm:mb-32 md:-mb-32 z-10">
+          <div className="relative w-full max-w-3xl mx-auto transition-transform duration-500 md:scale-110 origin-top md:-mt-20 lg:-mt-32 md:-mb-32 z-10">
             <img 
               src="/mascot_transparent.png" 
               alt="Search Mascot" 
@@ -126,15 +126,15 @@ export default function Home() {
             <div className="absolute flex flex-col justify-center items-center" style={{ top: '44%', left: '32%', width: '37%', height: '26%' }}>
               <div className="w-full h-full flex flex-col justify-center px-1">
                 
-                <form onSubmit={handleSearch} className="flex flex-col gap-0.5 md:gap-1.5 w-full">
+                <form onSubmit={handleSearch} className="flex flex-col gap-1.5 w-full">
                   <div className="relative">
                     <ReactTransliterate
                       value={query}
                       onChangeText={(text) => setQuery(text)}
                       lang="hi"
                       placeholder="Search..."
-                      containerClassName="w-full"
-                      className="w-full bg-white/70 border-b border-gray-300 rounded h-4 sm:h-5 md:h-7 px-1 text-gray-900 focus:outline-none focus:border-blue-500 text-[8px] sm:text-[9px] md:text-xs font-medium leading-none"
+                      containerClassName={`w-full ${query.length === 0 ? 'hide-suggestions' : ''}`}
+                      className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-1 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
                     />
                   </div>
                   
@@ -142,7 +142,7 @@ export default function Home() {
                     <select
                       value={searchType}
                       onChange={(e) => setSearchType(e.target.value)}
-                      className="w-full bg-white/70 border-b border-gray-300 rounded h-4 sm:h-5 md:h-7 px-0.5 text-gray-900 focus:outline-none focus:border-blue-500 text-[8px] sm:text-[9px] md:text-xs font-medium leading-none"
+                      className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-0.5 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
                     >
                       <option value="name">Name</option>
                       <option value="voter_id">Voter ID</option>
@@ -153,7 +153,7 @@ export default function Home() {
                     <select
                       value={ward}
                       onChange={(e) => setWard(e.target.value)}
-                      className="w-full bg-white/70 border-b border-gray-300 rounded h-4 sm:h-5 md:h-7 px-0.5 text-gray-900 focus:outline-none focus:border-blue-500 text-[8px] sm:text-[9px] md:text-xs font-medium leading-none"
+                      className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-0.5 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
                     >
                       <option value="">All Wards</option>
                       {availableWards.map(w => (
@@ -165,15 +165,74 @@ export default function Home() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="mt-0.5 bg-blue-600 hover:bg-blue-500 text-white font-bold h-5 sm:h-6 md:h-8 px-1 rounded shadow transition-all disabled:opacity-50 text-[8px] sm:text-[9px] md:text-xs w-full uppercase leading-none flex items-center justify-center"
+                    className="mt-1 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded shadow-md hover:shadow-lg transition-all disabled:opacity-50 h-7 w-full text-xs"
                   >
-                    {loading ? '...' : 'Search'}
+                    {loading ? '...' : 'SEARCH'}
                   </button>
                 </form>
 
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Traditional Search Section (Mobile Only) */}
+        <section className="md:hidden bg-[#0f172a]/60 backdrop-blur-xl border border-white/10 rounded-xl p-5 mb-8 shadow-2xl">
+          <form onSubmit={handleSearch} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-4 items-stretch">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-[#c2c6d6] mb-2 uppercase tracking-wider">Search Query</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+                    <svg className="h-5 w-5 text-[#8c909f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <ReactTransliterate
+                    value={query}
+                    onChangeText={(text) => setQuery(text)}
+                    lang="hi"
+                    placeholder="Search in Hindi (Type English)..."
+                    containerClassName={`w-full ${query.length === 0 ? 'hide-suggestions' : ''}`}
+                    className="w-full bg-[#051424]/50 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-[#8c909f] text-sm"
+                  />
+                </div>
+              </div>
+              <div className="w-full">
+                <label className="block text-xs font-medium text-[#c2c6d6] mb-2 uppercase tracking-wider">Filter By</label>
+                <select
+                  value={searchType}
+                  onChange={(e) => setSearchType(e.target.value)}
+                  className="w-full bg-[#051424]/50 border border-white/10 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-blue-500 transition-all appearance-none text-sm"
+                >
+                  <option value="name">Name / Relative Name</option>
+                  <option value="voter_id">Voter ID</option>
+                  <option value="house">House Number</option>
+                  <option value="serial">Serial Number</option>
+                </select>
+              </div>
+              <div className="w-full">
+                <label className="block text-xs font-medium text-[#c2c6d6] mb-2 uppercase tracking-wider">Ward No.</label>
+                <select
+                  value={ward}
+                  onChange={(e) => setWard(e.target.value)}
+                  className="w-full bg-[#051424]/50 border border-white/10 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-blue-500 transition-all appearance-none text-sm"
+                >
+                  <option value="">All</option>
+                  {availableWards.map(w => (
+                    <option key={w} value={w.toString()}>{w}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 px-8 rounded-lg shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] transition-all disabled:opacity-50 h-[48px] w-full mt-2 text-sm"
+              >
+                {loading ? 'Searching...' : 'Search'}
+              </button>
+            </div>
+          </form>
         </section>
 
         {/* Results Section */}
