@@ -31,19 +31,21 @@ def extract_sample_from_crop(client, pdf_path, page_num):
             type=types.Type.OBJECT,
             properties={
                 "sn": types.Schema(type=types.Type.INTEGER, description="Serial Number"),
-                "n": types.Schema(type=types.Type.STRING, description="Hindi Name")
+                "n": types.Schema(type=types.Type.STRING, description="Hindi Name"),
+                "is_gibberish": types.Schema(type=types.Type.BOOLEAN, description="True ONLY IF the name looks like corrupted OCR gibberish (e.g. missing vowel matras like 'ररषत गरललत', or unnaturally spaced letters like 'म ओ ह न'). False if it is a normal valid Hindi name.")
             },
-            required=["sn", "n"]
+            required=["sn", "n", "is_gibberish"]
         )
     )
 
     prompt = f"""
-    You are looking at a horizontally sliced image of an electoral roll page {page_num}.
+    You are an expert QA inspector looking at a horizontally sliced image of an electoral roll page {page_num}.
     The bottom row of grid boxes might be cut in half by the image edge. 
     IGNORE the bottom row completely. Do not attempt to read any box that is touching the bottom edge.
     ONLY extract the top rows of voters that are 100% fully visible inside the frame.
     Return their Serial Number ('sn') and Hindi Name ('n').
     Pay strict attention to all Hindi matras.
+    CRITICAL: Evaluate the extracted name. If it looks like OCR gibberish where matras were dropped (e.g., 'ररषत गरललत') or letters are spaced out (e.g., 'म ओ ह न'), set 'is_gibberish' to true.
     """
 
     response = client.models.generate_content(
@@ -118,9 +120,15 @@ def check_accuracy_and_heal(pdf_path: str, ward: int):
             for v in sample_voters:
                 sn = v.get('sn')
                 sample_name = str(v.get('n', '')).strip()
+                is_gibberish = v.get('is_gibberish', False)
                 
                 if not sn or not sample_name:
                     continue
+                    
+                if is_gibberish:
+                    print(f"  ❌ AI DETECTED GIBBERISH on Page {page_num}, SN {sn}: '{sample_name}'")
+                    page_failed = True
+                    break
                     
                 cur.execute("SELECT name_hi FROM voters WHERE ward = ? AND serial_number = ?", (ward, sn))
                 db_record = cur.fetchone()
