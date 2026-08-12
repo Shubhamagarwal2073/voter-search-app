@@ -126,7 +126,7 @@ def check_accuracy_and_heal(pdf_path: str, ward: int):
                     continue
                     
                 if is_gibberish:
-                    print(f"  ❌ AI DETECTED GIBBERISH on Page {page_num}, SN {sn}: '{sample_name}'")
+                    print(f"  [GIBBERISH DETECTED] Page {page_num}, SN {sn}: '{sample_name}'")
                     page_failed = True
                     break
                     
@@ -136,7 +136,7 @@ def check_accuracy_and_heal(pdf_path: str, ward: int):
                 if db_record:
                     db_name = str(db_record['name_hi']).strip()
                     if sample_name != db_name:
-                        print(f"  ❌ MISMATCH found on Page {page_num}, SN {sn}! AI QA says '{sample_name}', DB has '{db_name}'.")
+                        print(f"  [MISMATCH] found on Page {page_num}, SN {sn}! AI QA says '{sample_name}', DB has '{db_name}'.")
                         page_failed = True
                         break 
                 else:
