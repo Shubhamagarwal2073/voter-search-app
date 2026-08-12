@@ -1,0 +1,4 @@
+pypdf
+google-genai
+tenacity
+google-auth
