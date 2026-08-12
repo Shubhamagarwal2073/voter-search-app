@@ -3,6 +3,7 @@ import json
 import argparse
 import time
 import sqlite3
+import re
 from pathlib import Path
 from pypdf import PdfReader, PdfWriter
 from google import genai
@@ -127,6 +128,29 @@ def check_accuracy_and_heal(pdf_path: str, ward: int):
                     
                 if is_gibberish:
                     print(f"  [GIBBERISH DETECTED] Page {page_num}, SN {sn}: '{sample_name}'")
+                    page_failed = True
+                    break
+                    
+                # STRICT PYTHON TRIPWIRE: Catch Spaced Letters ("म ओ ह न")
+                words = sample_name.split()
+                single_char_words = [w for w in words if len(w) == 1]
+                if len(single_char_words) >= 3:
+                    print(f"  [PYTHON DETECTED SPACED GIBBERISH] Page {page_num}, SN {sn}: '{sample_name}'")
+                    page_failed = True
+                    break
+                    
+                # STRICT PYTHON TRIPWIRE: Catch Dropped Matras ("ररषत गरललत")
+                # Devanagari vowel signs/matras
+                matra_pattern = re.compile(r'[\u093E-\u094D\u0900-\u0903]')
+                bad_word = False
+                for w in words:
+                    # If a word is 4+ letters long and has NO vowel matras, it's highly suspicious OCR gibberish
+                    if len(w) >= 4 and not matra_pattern.search(w):
+                        bad_word = True
+                        break
+                        
+                if bad_word:
+                    print(f"  [PYTHON DETECTED MISSING MATRAS] Page {page_num}, SN {sn}: '{sample_name}'")
                     page_failed = True
                     break
                     
