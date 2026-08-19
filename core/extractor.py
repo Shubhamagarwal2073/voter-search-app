@@ -7,7 +7,7 @@ from pypdf import PdfReader, PdfWriter
 from google import genai
 from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from google.genai.errors import APIError
+from google.genai.errors import APIError, ClientError
 from database import init_db, insert_voters
 
 import google.auth
@@ -15,7 +15,7 @@ from google.auth.exceptions import DefaultCredentialsError
 
 # Retry decorator for handling transient API errors automatically
 @retry(
-    retry=retry_if_exception_type(APIError),
+    retry=retry_if_exception_type((APIError, ClientError)),
     wait=wait_exponential(multiplier=2, min=2, max=60),
     stop=stop_after_attempt(5)
 )
@@ -159,10 +159,9 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
         finally:
             if temp_pdf.exists():
                 temp_pdf.unlink()
-                
-        # Sleep to respect the 15 RPM limit for the free tier
-        if end_page < actual_end_page:
-            time.sleep(4.5)
+        
+        # Removed artificial sleep due to high quota limits
+        pass
 
     try:
         temp_dir.rmdir()
