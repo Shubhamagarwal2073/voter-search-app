@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir google-cloud-storage
 # Copy the core directory into /app/core
 COPY core/ /app/core/
 
-# Define the entrypoint to the new cloud wrapper
-ENTRYPOINT ["python", "/app/core/cloud_extractor.py"]
+# Define the entrypoint to a shell script that checks the MODE env var
+# If MODE=recorrect, run Phase 2. Otherwise run Phase 1 (cloud_extractor.py)
+ENTRYPOINT ["/bin/sh", "-c", "if [ \"$MODE\" = \"recorrect\" ]; then python /app/core/cloud_recorrection.py; else python /app/core/cloud_extractor.py; fi"]
 ENV PYTHONUNBUFFERED=1

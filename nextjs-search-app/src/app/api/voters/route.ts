@@ -8,7 +8,32 @@ export const dynamic = 'force-dynamic';
 // Store DB inside Next.js data folder so Vercel can deploy it
 const dbPath = path.resolve(process.cwd(), 'data', 'voters.db');
 
+// Simple in-memory rate limiter (25 requests per minute per IP)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
 export async function GET(request: Request) {
+  // --- Rate Limiting Logic ---
+  const ip = request.headers.get('x-forwarded-for') || 'unknown_ip';
+  const now = Date.now();
+  const windowMs = 60 * 1000; // 1 minute
+  const limit = 25; // Max requests per minute
+
+  const rateLimitData = rateLimitMap.get(ip);
+  if (rateLimitData) {
+    if (now > rateLimitData.resetTime) {
+      // Window expired, reset
+      rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+    } else {
+      rateLimitData.count++;
+      if (rateLimitData.count > limit) {
+        return NextResponse.json({ success: false, error: 'Too many requests. Please wait a minute before searching again.' }, { status: 429 });
+      }
+    }
+  } else {
+    // New IP
+    rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+  }
+
   const { searchParams } = new URL(request.url);
   const query = (searchParams.get('q') || '').trim();
   const type = searchParams.get('type') || 'name'; // 'name', 'voter_id', 'house', 'serial'
