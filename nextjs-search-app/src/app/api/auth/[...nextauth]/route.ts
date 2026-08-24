@@ -14,7 +14,7 @@ async function getAuthDb() {
   });
 }
 
-const handler = NextAuth({
+export const authOptions: any = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -63,12 +63,12 @@ const handler = NextAuth({
         (session.user as any).allowed_wards = token.allowed_wards;
       }
       return session;
-    },
   },
-
   session: {
     strategy: "jwt",
   }
-});
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };

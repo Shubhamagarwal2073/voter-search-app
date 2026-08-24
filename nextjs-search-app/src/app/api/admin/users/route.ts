@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
-import { GET as authHandler } from '@/app/api/auth/[...nextauth]/route'; // Ensure we can get auth options
+import { authOptions } from '../auth/[...nextauth]/route';
 
 // Assuming we need NextAuth options to get session, 
 // a cleaner way is to create an authOptions object in [...nextauth] but for now we can just use getServerSession()
@@ -19,7 +19,7 @@ async function getAuthDb() {
 
 // Helper to check admin
 async function isAdmin() {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session || !session.user || (session.user as any).role !== 'admin') {
     // If no session from DB, check if it's the environment admin email
     if (session?.user?.email === process.env.ADMIN_EMAIL) {

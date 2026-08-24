@@ -9,10 +9,11 @@ export const dynamic = 'force-dynamic';
 const dbPath = path.resolve(process.cwd(), 'data', 'voters.db');
 
 import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
 
 export async function GET() {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     const db = await open({
       filename: dbPath,
       driver: sqlite3.Database
