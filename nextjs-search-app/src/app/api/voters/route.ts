@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
+import { getServerSession } from 'next-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,9 +38,31 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = (searchParams.get('q') || '').trim();
   const type = searchParams.get('type') || 'name'; // 'name', 'voter_id', 'house', 'serial'
-  const ward = searchParams.get('ward') || ''; // optional ward filter
+  let ward = searchParams.get('ward') || ''; // optional ward filter
 
   try {
+    const session = await getServerSession();
+    if (!session || !session.user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const role = (session.user as any).role;
+    if (role === 'admin' || session.user.email === process.env.ADMIN_EMAIL) {
+      return NextResponse.json({ success: false, error: 'Admins cannot access the search platform' }, { status: 403 });
+    }
+
+    const allowed = (session.user as any).allowed_wards;
+    let allowedArr: number[] = [];
+    if (allowed && allowed !== 'all') {
+      allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
+      // If a specific ward was requested, verify it's in the allowed list
+      if (ward) {
+        if (!allowedArr.includes(parseInt(ward, 10))) {
+           return NextResponse.json({ success: false, error: 'Forbidden ward access' }, { status: 403 });
+        }
+      }
+    }
+
     const db = await open({
       filename: dbPath,
       driver: sqlite3.Database
@@ -48,8 +71,16 @@ export async function GET(request: Request) {
     let voters = [];
     
     // Build ward clause
-    const wardClause = ward ? `AND ward = ?` : '';
-    const wardParam = ward ? [parseInt(ward, 10)] : [];
+    let wardClause = '';
+    let wardParam: any[] = [];
+
+    if (ward) {
+      wardClause = `AND ward = ?`;
+      wardParam = [parseInt(ward, 10)];
+    } else if (allowedArr.length > 0) {
+      wardClause = `AND ward IN (${allowedArr.map(() => '?').join(',')})`;
+      wardParam = allowedArr;
+    }
 
     if (query) {
       if (type === 'voter_id') {
@@ -89,6 +120,8 @@ export async function GET(request: Request) {
       // If no query, just return a few recent ones, respecting ward
       if (ward) {
         voters = await db.all(`SELECT * FROM voters WHERE ward = ? LIMIT 10`, [parseInt(ward, 10)]);
+      } else if (allowedArr.length > 0) {
+        voters = await db.all(`SELECT * FROM voters WHERE ward IN (${allowedArr.map(() => '?').join(',')}) LIMIT 10`, allowedArr);
       } else {
         voters = await db.all(`SELECT * FROM voters LIMIT 10`);
       }
