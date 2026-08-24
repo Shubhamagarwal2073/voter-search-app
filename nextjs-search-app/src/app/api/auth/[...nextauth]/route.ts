@@ -22,7 +22,7 @@ export const authOptions: any = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account, profile }: any) {
       if (user.email) {
         const db = await getAuthDb();
         const existingUser = await db.get(`SELECT * FROM users WHERE email = ?`, [user.email]);
@@ -45,7 +45,7 @@ export const authOptions: any = {
       }
       return false;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (token.email) {
         const db = await getAuthDb();
         const existingUser = await db.get(`SELECT * FROM users WHERE email = ?`, [token.email]);
@@ -57,7 +57,7 @@ export const authOptions: any = {
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (session.user) {
         (session.user as any).role = token.role;
         (session.user as any).allowed_wards = token.allowed_wards;
