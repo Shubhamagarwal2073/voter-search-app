@@ -13,7 +13,7 @@ import { authOptions } from '../auth/[...nextauth]/route';
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const session: any = await getServerSession(authOptions);
     const db = await open({
       filename: dbPath,
       driver: sqlite3.Database

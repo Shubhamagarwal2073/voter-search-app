@@ -19,7 +19,7 @@ async function getAuthDb() {
 
 // Helper to check admin
 async function isAdmin() {
-  const session = await getServerSession(authOptions);
+  const session: any = await getServerSession(authOptions);
   if (!session || !session.user || (session.user as any).role !== 'admin') {
     // If no session from DB, check if it's the environment admin email
     if (session?.user?.email === process.env.ADMIN_EMAIL) {

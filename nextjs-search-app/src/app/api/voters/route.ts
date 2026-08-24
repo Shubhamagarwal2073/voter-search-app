@@ -42,7 +42,7 @@ export async function GET(request: Request) {
   let ward = searchParams.get('ward') || ''; // optional ward filter
 
   try {
-    const session = await getServerSession(authOptions);
+    const session: any = await getServerSession(authOptions);
     if (!session || !session.user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
