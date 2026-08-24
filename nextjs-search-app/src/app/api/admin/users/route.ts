@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '../../auth/[...nextauth]/route';
 
 // Assuming we need NextAuth options to get session, 
 // a cleaner way is to create an authOptions object in [...nextauth] but for now we can just use getServerSession()

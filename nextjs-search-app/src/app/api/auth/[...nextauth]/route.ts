@@ -63,6 +63,7 @@ export const authOptions: any = {
         (session.user as any).allowed_wards = token.allowed_wards;
       }
       return session;
+    },
   },
   session: {
     strategy: "jwt",
