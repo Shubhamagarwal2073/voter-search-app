@@ -65,9 +65,7 @@ const handler = NextAuth({
       return session;
     },
   },
-  pages: {
-    signIn: '/login', // Optional, we can just use the default NextAuth login page if we don't build one right away
-  },
+
   session: {
     strategy: "jwt",
   }
