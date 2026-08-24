@@ -195,7 +195,7 @@ def main():
     input_bucket = storage_client.bucket(INPUT_BUCKET_NAME)
     output_bucket = storage_client.bucket(OUTPUT_BUCKET_NAME)
 
-    prefix = f"{DATASET_NAME}/"
+    prefix = f"archive/{DATASET_NAME}/"
     blobs = list(input_bucket.list_blobs(prefix=prefix))
     pdf_blobs = [b for b in blobs if b.name.endswith('.pdf')]
     pdf_blobs.sort(key=lambda x: x.name)

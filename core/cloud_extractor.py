@@ -97,8 +97,8 @@ def main():
     input_bucket = storage_client.bucket(INPUT_BUCKET_NAME)
     output_bucket = storage_client.bucket(OUTPUT_BUCKET_NAME)
 
-    # List files in the dataset folder
-    prefix = f"{DATASET_NAME}/"
+    # List files in the queue folder
+    prefix = f"queue/{DATASET_NAME}/"
     blobs = list(input_bucket.list_blobs(prefix=prefix))
     pdf_blobs = [b for b in blobs if b.name.endswith('.pdf')]
     pdf_blobs.sort(key=lambda x: x.name)
@@ -133,6 +133,12 @@ def main():
     output_blob.upload_from_filename(local_json_path)
     
     print(f"Successfully uploaded {len(verified_voters)} voters to gs://{OUTPUT_BUCKET_NAME}/{output_blob_path}")
+
+    # Move processed PDF to archive folder
+    archive_blob_path = target_blob.name.replace("queue/", "archive/", 1)
+    input_bucket.copy_blob(target_blob, input_bucket, archive_blob_path)
+    target_blob.delete()
+    print(f"Moved {filename} to gs://{INPUT_BUCKET_NAME}/{archive_blob_path}")
 
 if __name__ == "__main__":
     main()
