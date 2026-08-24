@@ -1,13 +1,13 @@
 <div align="center">
   
-  # 🇮🇳 Voter OCR & Search Portal
+  # 🇮🇳 Voter OCR & Search Portal (Enterprise Edition)
   
-  **AI-Powered Electoral Roll Extraction & Lightning-Fast Search App**
+  **AI-Powered Electoral Roll Extraction & Secure Next.js Admin Dashboard**
   
   [![Built by World.s Services](https://img.shields.io/badge/Built_by-World.s_Services-blue?style=for-the-badge)](https://github.com/Shagarwal07)
   [![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-  [![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org/)
-  [![Google Gemini](https://img.shields.io/badge/Gemini_2.5_Vision-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://deepmind.google/technologies/gemini/)
+  [![Google Cloud](https://img.shields.io/badge/Google_Cloud-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://cloud.google.com/)
+  [![Google Gemini](https://img.shields.io/badge/Vertex_AI-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://cloud.google.com/vertex-ai)
 
 </div>
 
@@ -15,21 +15,19 @@
 
 ## 📖 Overview
 
-**Voter OCR & Search Portal** is a production-grade pipeline built to solve the complex problem of extracting structured data from dense, multi-page Indian government Electoral Rolls (PDFs) in Hindi. 
+**Voter OCR & Search Portal** is a production-grade, cloud-native architecture designed to process thousands of pages of messy, unstructured Hindi Electoral Rolls (PDFs) and serve them through a highly secure, lightning-fast web portal.
 
-By leveraging **Google Gemini 2.5 Flash Vision AI**, this system reads massive tables, strictly enforces Hindi grammar rules, handles complex "deleted" or "supplemental" anomalies, and saves the pristine data into an offline SQLite database. 
-
-The accompanying frontend is a gorgeous, glassmorphism-styled **Next.js** application that provides instant, fuzzy search capabilities across thousands of voters.
+The system uses a highly scalable **Google Cloud Run** architecture to process PDFs in parallel using **Vertex AI (Gemini 2.5 Vision)**. It features an automated QA "auto-healing" pipeline, and a beautifully designed **Next.js** frontend deployed on a **Google Compute Engine (GCP)** VM using PM2.
 
 ---
 
 ## ✨ Key Features
 
-- **🧠 Zero-Shot AI Vision Extraction**: Processes 59-page PDFs containing thousands of tiny grid boxes. Accurately extracts Hindi names, serial numbers, Epic IDs, ages, and translates gender.
-- **🛡️ Ghost Voter Purging**: Programmatically intercepts and deletes "ghost" voters who were stamped as 'DELETED' in the physical document but lacked metadata.
-- **🔄 Smart UPSERT Pipeline**: Safely handles document addendums and supplemental pages. Re-scans single pages and overwrites corrupted data without duplicating rows.
-- **⚡ Next.js Glassmorphism UI**: A premium, responsive web application featuring real-time fuzzy search, expandable voter cards, and dynamic database counters.
-- **💾 100% Offline Database**: Uses a blazing-fast local SQLite database (`voters.db`), requiring zero cloud database hosting costs for the frontend.
+- **🚀 Serverless Parallel OCR Pipeline**: Uses Google Cloud Run Jobs to process up to 50 PDFs simultaneously. 
+- **📂 Queue-to-Archive Architecture**: Flawless state management. PDFs uploaded to `queue/` are processed and automatically migrated to `archive/` to guarantee idempotency and prevent duplicate processing.
+- **🤖 Auto-Healing AI (Recorrection)**: A dedicated Cloud Run QA job crops and re-reads specific page segments, mathematically cross-checks them against the JSON output, and auto-heals any AI hallucinations or "gibberish".
+- **🔐 Role-Based Access Control (RBAC)**: Secure Admin Dashboard using `NextAuth`. Only authorized Google accounts can log in, and users are strictly restricted to searching within their assigned Wards.
+- **⚡ Production VM Deployment**: Hosted on a GCP e2-micro instance, daemonized via PM2 for 24/7 uptime, with Swap Memory configured for high-performance SQLite querying.
 
 ---
 
@@ -37,46 +35,60 @@ The accompanying frontend is a gorgeous, glassmorphism-styled **Next.js** applic
 
 | Category | Technology |
 | --- | --- |
-| **AI Model** | Google Gemini 2.5 Flash (Vertex AI) |
-| **Backend Scripts** | Python 3, `pypdf`, `sqlite3` |
-| **Database** | SQLite3 |
-| **Frontend Web App** | Next.js 14, React, Tailwind CSS |
-| **Design System** | Lucide Icons, Glassmorphism UI |
+| **AI Extraction** | Google Vertex AI (Gemini 2.5 Vision) |
+| **Cloud Infrastructure** | Google Cloud Run (Jobs), Google Cloud Storage (Buckets) |
+| **Hosting & DevOps** | GCP Compute Engine (VM), PM2, Git |
+| **Database** | SQLite3 (Local file-based for speed) |
+| **Frontend & Auth** | Next.js 14 (App Router), Tailwind CSS, NextAuth.js |
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Deployment & Commands
 
-### 1. Run the Next.js Search Portal
-Navigate into the frontend directory and start the local server:
+### 1. Cloud OCR Pipeline (Google Cloud Run)
+To deploy updates to the Python extraction scripts:
 ```bash
-cd nextjs-search-app
-npm install
-npm run dev
+# 1. Deploy the initial extractor
+gcloud run jobs deploy ocr-job --source . --region us-central1
+
+# 2. Deploy the QA auto-healer
+gcloud run jobs deploy ocr-recorrection-job --source . --region us-central1
 ```
-Open `http://localhost:3000` to interact with the database!
 
-### 2. Run the AI Extraction Pipeline
-If you want to extract a new Electoral Roll PDF, activate your Python virtual environment and run the extractor:
+### 2. Local Database Sync
+Once the Cloud Run jobs finish outputting JSONs to the GCS Output Bucket, run this command on the server to sync the data into the live SQLite database:
 ```bash
-# Set up Google Cloud Auth first
-gcloud auth application-default login
+python core/cloud_sync.py
+```
 
-# Run the batch extractor
-python extractor.py "path/to/voter_list.pdf" --ward 5
+### 3. Frontend Web Application (GCP VM)
+To pull the latest code and reboot the live production server:
+```bash
+git pull origin main
+npm run build
+pm2 start npm --name "voter-app" -- start
+# To save the state so it starts on server reboot:
+pm2 save
 ```
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Enterprise Architecture Flow
 
 ```mermaid
-graph LR
-    A[Raw Electoral PDF] -->|Python Extractor| B(Gemini 2.5 Vision)
-    B -->|JSON Array| C[Data Clean & Purge Scripts]
-    C -->|UPSERT| D[(SQLite Database)]
-    D -->|API Route| E[Next.js Frontend]
-    E -->|Fuzzy Search| F((End User))
+graph TD
+    A[Upload PDFs to gs://input/queue/] -->|Cloud Run Job 1| B(cloud_extractor.py via Vertex AI)
+    B -->|Output JSON| C[gs://output/]
+    B -->|Move PDF| D[gs://input/archive/]
+    
+    C -->|Cloud Run Job 2| E(cloud_recorrection.py QA)
+    D --> E
+    E -->|Healed JSON| C
+    
+    C -->|cloud_sync.py| F[(Local SQLite DB)]
+    
+    F -->|Next.js Backend| G[Protected API Routes]
+    G -->|NextAuth RBAC| H[Next.js Frontend Dashboard]
 ```
 
 ---
@@ -84,6 +96,6 @@ graph LR
 <div align="center">
   <br />
   <p>
-    <i>Architected and designed with ❤️ by <b>World.s Services</b></i>
+    <i>Architected and designed with ❤️ by <b>Imposter World Services</b></i>
   </p>
 </div>
