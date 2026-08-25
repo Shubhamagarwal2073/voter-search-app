@@ -106,9 +106,16 @@ export default function Home() {
     <div className="min-h-screen bg-[#051424] text-[#d4e4fa] font-sans px-5 py-8 md:p-10 pt-16 md:pt-20 overflow-hidden relative">
 
       {/* Floating Marquee Promotion */}
-      <div className="fixed top-0 left-0 w-full z-50 bg-[#0f172a]/30 backdrop-blur-md border-b border-white/5 py-2 overflow-hidden pointer-events-none">
-        <div className="animate-marquee inline-block text-emerald-400/90 font-medium text-xs md:text-sm tracking-[0.2em] uppercase">
-          <span className="opacity-70 mx-4">✨</span>  RK COACHING CLASSES <span className="opacity-70 mx-4">✨</span> RK COACHING CLASSES <span className="opacity-70 mx-4">✨</span>RK COACHING CLASSES <span className="opacity-70 mx-4">✨</span>RK COACHING CLASSES
+      <div className="fixed top-0 left-0 w-full z-50 bg-gradient-to-r from-emerald-900/60 via-emerald-800/60 to-emerald-900/60 backdrop-blur-xl border-b border-emerald-500/40 py-3 md:py-4 overflow-hidden pointer-events-none shadow-[0_4px_20px_rgba(16,185,129,0.3)]">
+        <div className="animate-marquee inline-block text-emerald-300 font-extrabold text-base md:text-xl tracking-[0.25em] uppercase drop-shadow-[0_0_12px_rgba(52,211,153,0.9)] whitespace-nowrap">
+          <span className="opacity-100 mx-6 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,1)] text-lg md:text-2xl">✨</span>  
+          RK COACHING CLASSES 
+          <span className="opacity-100 mx-6 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,1)] text-lg md:text-2xl">✨</span> 
+          RK COACHING CLASSES 
+          <span className="opacity-100 mx-6 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,1)] text-lg md:text-2xl">✨</span>
+          RK COACHING CLASSES 
+          <span className="opacity-100 mx-6 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,1)] text-lg md:text-2xl">✨</span>
+          RK COACHING CLASSES
         </div>
       </div>
 
@@ -158,85 +165,6 @@ export default function Home() {
           onClose={() => setShowStatsModal(false)}
         />
 
-        {/* Conditional rendering to prevent duplicate DOM issues with ReactTransliterate */}
-        {isMobile === null ? (
-          <div className="h-48 md:h-96 flex items-center justify-center opacity-50">
-            <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-          </div>
-        ) : !isMobile ? (
-          <section className="relative w-full max-w-4xl mx-auto mb-12 flex justify-center items-center group">
-            {/* Mascot Background */}
-            <div className="relative w-full max-w-3xl mx-auto transition-transform duration-500 scale-110 origin-top -mt-20 lg:-mt-32 -mb-32 z-10">
-              <img
-                src="/mascot_transparent.png"
-                alt="Search Mascot"
-                className="w-full h-auto opacity-90 block pointer-events-none"
-                style={{
-                  maskImage: 'linear-gradient(to bottom, black 72%, transparent 82%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, black 72%, transparent 82%)'
-                }}
-              />
-
-              {/* Interactive Tablet Overlay (Exactly mapping the tablet coordinates) */}
-              <div className="absolute flex flex-col justify-center items-center" style={{ top: '44%', left: '32%', width: '37%', height: '26%' }}>
-                <div className="w-full h-full flex flex-col justify-center px-1">
-
-                  <form onSubmit={handleSearch} className="flex flex-col gap-1.5 w-full">
-                    <div className="relative">
-                      <ReactTransliterate
-                        value={query}
-                        onChangeText={(text) => setQuery(text)}
-                        lang="hi"
-                        placeholder="Search..."
-                        containerClassName={`w-full ${query.length === 0 ? 'hide-suggestions' : ''}`}
-                        className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-1 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-0.5">
-                      <select
-                        value={searchType}
-                        onChange={(e) => {
-                          if (!session && e.target.value !== 'voter_id') {
-                            window.location.href = '/login';
-                            return;
-                          }
-                          setSearchType(e.target.value);
-                        }}
-                        className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-0.5 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
-                      >
-                        <option value="voter_id">Voter ID</option>
-                        <option value="name">Name (Login Required)</option>
-                        <option value="house">House No. (Login Required)</option>
-                        <option value="serial">Serial No. (Login Required)</option>
-                      </select>
-
-                      <select
-                        value={ward}
-                        onChange={(e) => setWard(e.target.value)}
-                        className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-0.5 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
-                      >
-                        <option value="">All Wards</option>
-                        {availableWards.map(w => (
-                          <option key={w} value={w.toString()}>Ward {w}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="mt-1 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded shadow-md hover:shadow-lg transition-all disabled:opacity-50 h-7 w-full text-xs"
-                    >
-                      {loading ? '...' : 'SEARCH'}
-                    </button>
-                  </form>
-
-                </div>
-              </div>
-            </div>
-          </section>
-        ) : (
           <section className="bg-[#0f172a]/60 backdrop-blur-xl border border-white/10 rounded-xl p-5 mb-8 shadow-2xl">
             <form onSubmit={handleSearch} className="flex flex-col gap-5">
               <div className="flex flex-col gap-4 items-stretch">
@@ -248,14 +176,24 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
                     </div>
-                    <ReactTransliterate
-                      value={query}
-                      onChangeText={(text) => setQuery(text)}
-                      lang="hi"
-                      placeholder="Search in Hindi (Type English)..."
-                      containerClassName={`w-full ${query.length === 0 ? 'hide-suggestions' : ''}`}
-                      className="w-full bg-[#051424]/50 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-[#8c909f] text-sm"
-                    />
+                    {searchType === 'name' ? (
+                      <ReactTransliterate
+                        value={query}
+                        onChangeText={(text) => setQuery(text)}
+                        lang="hi"
+                        placeholder="Search in Hindi (Type English)..."
+                        containerClassName={`w-full ${query.length === 0 ? 'hide-suggestions' : ''}`}
+                        className="w-full bg-[#051424]/50 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-[#8c909f] text-sm"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Search..."
+                        className="w-full bg-[#051424]/50 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-[#8c909f] text-sm"
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="w-full">
@@ -300,7 +238,6 @@ export default function Home() {
               </div>
             </form>
           </section>
-        )}
 
         {/* Results Section */}
         {quotaError ? (
@@ -437,11 +374,12 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="relative z-10 mt-16 pb-8 text-center text-[#8c909f] text-sm">
-        <p>© 2026 Voter_Scrapper (Election) </p>
-        <p className="mt-1">
-          Powered by <a href="#" onClick={(e) => { e.preventDefault(); window.open('file:///C:/Users/Shubh/OneDrive/Desktop/IMPOSTER/index.html', '_blank') }} className="text-emerald-400 hover:text-emerald-300 hover:underline transition-colors font-medium">Imposter's world ( RK COACHING CLASSES  )</a>
-        </p>
+      <footer className="relative z-10 mt-16 pb-8 flex flex-col items-center justify-center gap-3 text-[#8c909f] text-sm">
+        <p>© 2026 Voter_Scrapper (Election)</p>
+        <a href="/about" className="inline-flex px-3 py-1.5 text-xs font-bold rounded-full bg-[#F16524] text-white shadow-md hover:scale-105 transition-transform items-center gap-1.5">
+          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
+          Powered by IWS
+        </a>
       </footer>
     </div>
   );
