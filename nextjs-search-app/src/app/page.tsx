@@ -130,13 +130,20 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
-            {session && (
+            {session ? (
               <button 
                 onClick={() => signOut()}
                 className="px-4 py-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-xs md:text-sm font-medium flex items-center gap-2 transition-all hover:shadow-[0_0_15px_rgba(239,68,68,0.3)]"
               >
                 Logout
               </button>
+            ) : (
+              <a 
+                href="/login"
+                className="px-4 py-1.5 rounded-full bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 text-xs md:text-sm font-medium flex items-center gap-2 transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+              >
+                Login
+              </a>
             )}
           </div>
         </header>
