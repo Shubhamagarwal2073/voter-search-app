@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ArrowLeft, Code, Mail, Globe, ShieldCheck } from 'lucide-react';
+
 import Link from 'next/link';
 
 export default function AboutPage() {
@@ -20,7 +20,7 @@ export default function AboutPage() {
           href="/login" 
           className="inline-flex items-center gap-2 text-[#8c909f] hover:text-white mb-12 transition-colors group"
         >
-          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
           <span>Back</span>
         </Link>
 
@@ -46,7 +46,7 @@ export default function AboutPage() {
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#F16524] to-[#FF9642] opacity-50 group-hover:opacity-100 transition-opacity"></div>
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 bg-[#F16524]/10 rounded-2xl text-[#F16524]">
-                <Globe className="w-6 h-6" />
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               </div>
               <h2 className="text-2xl font-bold">About IWS</h2>
             </div>
@@ -55,11 +55,11 @@ export default function AboutPage() {
             </p>
             <ul className="space-y-3">
               <li className="flex items-center gap-3 text-sm text-gray-300">
-                <ShieldCheck className="w-5 h-5 text-[#F16524]" />
+                <svg className="w-5 h-5 text-[#F16524]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                 Military-grade data security
               </li>
               <li className="flex items-center gap-3 text-sm text-gray-300">
-                <Code className="w-5 h-5 text-[#F16524]" />
+                <svg className="w-5 h-5 text-[#F16524]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
                 Next.js & React architecture
               </li>
             </ul>
@@ -70,7 +70,7 @@ export default function AboutPage() {
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-50 group-hover:opacity-100 transition-opacity"></div>
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-400">
-                <Code className="w-6 h-6" />
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
               </div>
               <h2 className="text-2xl font-bold">The Developer</h2>
             </div>
@@ -89,7 +89,7 @@ export default function AboutPage() {
               href="mailto:rk.coachings20@gmail.com" 
               className="inline-flex items-center justify-center w-full gap-2 px-6 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white font-medium transition-all hover:scale-[1.02]"
             >
-              <Mail className="w-5 h-5" />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
               Contact the Developer
             </a>
           </div>
