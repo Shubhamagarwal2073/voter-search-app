@@ -91,7 +91,6 @@ export default function Home() {
   useEffect(() => {
     // Initial fetches
     fetchWards();
-    fetchResults('', 'name', '');
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
