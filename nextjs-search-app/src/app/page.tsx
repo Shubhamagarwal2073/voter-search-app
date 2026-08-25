@@ -8,7 +8,7 @@ import { useSession, signOut } from "next-auth/react";
 export default function Home() {
   const { data: session } = useSession();
   const [query, setQuery] = useState('');
-  const [searchType, setSearchType] = useState('name');
+  const [searchType, setSearchType] = useState('voter_id');
   const [ward, setWard] = useState('');
   const [availableWards, setAvailableWards] = useState<number[]>([]);
   const [results, setResults] = useState<any[]>([]);
@@ -188,10 +188,10 @@ export default function Home() {
                         onChange={(e) => setSearchType(e.target.value)}
                         className="w-full bg-white/70 border-b border-gray-300 rounded h-7 px-0.5 text-gray-900 focus:outline-none focus:border-blue-500 text-xs font-medium leading-none"
                       >
-                        <option value="name">Name</option>
                         <option value="voter_id">Voter ID</option>
-                        <option value="house">House No.</option>
-                        <option value="serial">Serial No.</option>
+                        <option value="name" disabled>Name (Login Required)</option>
+                        <option value="house" disabled>House No. (Login Required)</option>
+                        <option value="serial" disabled>Serial No. (Login Required)</option>
                       </select>
                       
                       <select
@@ -248,8 +248,8 @@ export default function Home() {
                   onChange={(e) => setSearchType(e.target.value)}
                   className="w-full bg-[#051424]/50 border border-white/10 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-blue-500 transition-all appearance-none text-sm"
                 >
-                  <option value="name">Name / Relative Name</option>
                   <option value="voter_id">Voter ID</option>
+                  <option value="name">Name / Relative Name</option>
                   <option value="house">House Number</option>
                   <option value="serial">Serial Number</option>
                 </select>
