@@ -21,29 +21,24 @@ export async function GET(request: Request) {
   if (ip.includes(',')) {
     ip = ip.split(',')[0].trim(); // Prevent IP spoofing by strictly taking the true original IP
   }
-  
+
   const now = Date.now();
   const windowMs24h = 24 * 60 * 60 * 1000; // 24 hours for freemium
-  
+
   const { searchParams } = new URL(request.url);
   const query = (searchParams.get('q') || '').trim();
   const type = searchParams.get('type') || 'name'; // 'name', 'voter_id', 'house', 'serial'
   let ward = searchParams.get('ward') || ''; // optional ward filter
-  
-  // Basic query length validation (if not an empty initial load)
-  if (query.length > 0 && query.length < 4) {
-    return NextResponse.json({ success: false, error: 'Search query must be at least 4 characters long.' }, { status: 400 });
-  }
 
   try {
     const session: any = await getServerSession(authOptions);
     const role = session?.user?.role || 'public';
-    
+
     // Security Rule: Public users (not logged in) can ONLY search by Voter ID
     if (role === 'public' && query.length > 0 && type !== 'voter_id') {
       return NextResponse.json({ success: false, error: 'Public users can only search by Voter ID. Please sign in with Google to search by Name.' }, { status: 403 });
     }
-    
+
     // --- RATE LIMITING LOGIC ---
     // TIER 3: ADMINS & PAID USERS - Unlimited total, but 25 requests per minute to prevent scraping
     if (role === 'admin' || role === 'paid' || role === 'user' || (session?.user?.email && process.env.ADMIN_EMAIL && session.user.email === process.env.ADMIN_EMAIL)) {
@@ -65,9 +60,9 @@ export async function GET(request: Request) {
       // TIER 1 & 2: PUBLIC and GUESTS - Persistent IP tracking in DB
       const authDb = await open({ filename: authDbPath, driver: sqlite3.Database });
       await authDb.run('CREATE TABLE IF NOT EXISTS public_limits (ip TEXT PRIMARY KEY, search_count INTEGER, last_reset INTEGER)');
-      
+
       const ipRecord = await authDb.get('SELECT * FROM public_limits WHERE ip = ?', [ip]);
-      
+
       let currentCount = 0;
       if (ipRecord) {
         if (now > ipRecord.last_reset + windowMs24h) {
@@ -79,11 +74,11 @@ export async function GET(request: Request) {
       } else {
         await authDb.run('INSERT INTO public_limits (ip, search_count, last_reset) VALUES (?, 0, ?)', [ip, now]);
       }
-      
+
       console.log(`[RateLimit] Role: ${role}, IP: ${ip}, CurrentCount: ${currentCount}`);
-      
+
       const limit = role === 'guest' ? 4 : 2; // Public gets 2, Guests get 2 MORE (4 total per IP)
-      
+
       // If there is an actual search query (not just initial load), increment and check limit
       if (query || ward) {
         if (currentCount >= limit) {
@@ -110,7 +105,7 @@ export async function GET(request: Request) {
         allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
         // If a specific ward was requested, verify it's in the allowed list
         if (ward && !allowedArr.includes(parseInt(ward, 10))) {
-             return NextResponse.json({ success: false, error: 'Forbidden ward access' }, { status: 403 });
+          return NextResponse.json({ success: false, error: 'Forbidden ward access' }, { status: 403 });
         }
       } else {
         // If they are a paid user but have an empty allowed_wards field, lock them out!
@@ -124,7 +119,7 @@ export async function GET(request: Request) {
     });
 
     let voters = [];
-    
+
     // Build ward clause
     let wardClause = '';
     let wardParam: any[] = [];
@@ -159,7 +154,7 @@ export async function GET(request: Request) {
           // Fall back to a strict fuzzy search!
           const allVotersQuery = `SELECT * FROM voters ${wardClause ? 'WHERE ' + wardClause.replace('AND ', '') : ''}`;
           const allVotersForWard = await db.all(allVotersQuery, wardParam);
-          
+
           const Fuse = (await import('fuse.js')).default;
           const fuse = new Fuse(allVotersForWard, {
             keys: ['name_hi', 'relative_name_hi'],

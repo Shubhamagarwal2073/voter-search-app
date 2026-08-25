@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
     const db = await getAuthDb();
     const result = await db.run(
-      `INSERT INTO users (email, role, allowed_wards) VALUES (?, 'user', ?)`,
+      `INSERT INTO users (email, role, allowed_wards) VALUES (?, 'paid', ?)`,
       [email, allowed_wards || '']
     );
     await db.close();

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Menu, X, ArrowLeft, LogIn } from 'lucide-react';
+
 import { signIn } from 'next-auth/react';
 
 export default function LoginPage() {
@@ -111,7 +111,7 @@ export default function LoginPage() {
               onClick={() => setIsMenuOpen(false)}
               className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
             >
-              <X className="w-5 h-5" />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
 
@@ -135,7 +135,7 @@ export default function LoginPage() {
               className={`w-full py-4 rounded-full bg-white font-semibold text-base text-slate-900 flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0'}`}
               style={{ transitionDelay: isMenuOpen ? '450ms' : '0ms' }}
             >
-              <ArrowLeft className="w-5 h-5" />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
               Back to Home
             </a>
           </div>
