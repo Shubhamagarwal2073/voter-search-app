@@ -5,18 +5,13 @@ export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
+    
+    // We only reach here if the user is accessing a matched route (e.g., /admin)
     const isAdmin = token?.role === "admin" || token?.email === process.env.ADMIN_EMAIL;
 
-    if (isAdmin) {
-      // Admins are only allowed on /admin, not on / (platform)
-      if (path !== "/admin" && !path.startsWith("/api/admin")) {
-        return NextResponse.redirect(new URL("/admin", req.url));
-      }
-    } else {
-      // Normal users are only allowed on / (platform), not on /admin
-      if (path.startsWith("/admin") || path.startsWith("/api/admin")) {
-        return NextResponse.redirect(new URL("/", req.url));
-      }
+    if (!isAdmin && (path.startsWith("/admin") || path.startsWith("/api/admin"))) {
+      // If a non-admin tries to access admin routes, kick them to the home page
+      return NextResponse.redirect(new URL("/", req.url));
     }
   },
   {
@@ -26,17 +21,10 @@ export default withAuth(
   }
 );
 
-// Protect all routes except the auth api and static files
+// ONLY protect the admin routes. Everything else is public!
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (NextAuth endpoints)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - images, icons (public folder)
-     */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/admin/:path*",
+    "/api/admin/:path*"
   ],
 };
