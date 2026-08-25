@@ -392,9 +392,7 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        {/* Results Section */}
-        {/* ... results table ... */}
+        )}
       </main>
 
       <footer className="relative z-10 mt-16 pb-8 text-center text-[#8c909f] text-sm">
