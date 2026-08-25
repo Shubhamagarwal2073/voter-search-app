@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     
     // --- RATE LIMITING LOGIC ---
     // TIER 3: ADMINS & PAID USERS - Unlimited total, but 25 requests per minute to prevent scraping
-    if (role === 'admin' || role === 'paid' || (session?.user?.email && process.env.ADMIN_EMAIL && session.user.email === process.env.ADMIN_EMAIL)) {
+    if (role === 'admin' || role === 'paid' || role === 'user' || (session?.user?.email && process.env.ADMIN_EMAIL && session.user.email === process.env.ADMIN_EMAIL)) {
       const rateLimitData = rateLimitMap.get(ip);
       const windowMs = 60 * 1000; // 1 minute
       if (rateLimitData) {
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
     // --- END RATE LIMITING ---
 
     let allowedArr: number[] = [];
-    if (role === 'paid') {
+    if (role === 'paid' || role === 'user') {
       const allowed = session?.user?.allowed_wards;
       if (allowed === 'all') {
         // Allowed all wards, leave array empty
