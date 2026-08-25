@@ -29,10 +29,20 @@ export async function GET(request: Request) {
   const query = (searchParams.get('q') || '').trim();
   const type = searchParams.get('type') || 'name'; // 'name', 'voter_id', 'house', 'serial'
   let ward = searchParams.get('ward') || ''; // optional ward filter
+  
+  // Basic query length validation (if not an empty initial load)
+  if (query.length > 0 && query.length < 4) {
+    return NextResponse.json({ success: false, error: 'Search query must be at least 4 characters long.' }, { status: 400 });
+  }
 
   try {
     const session: any = await getServerSession(authOptions);
     const role = session?.user?.role || 'public';
+    
+    // Security Rule: Public users (not logged in) can ONLY search by Voter ID
+    if (role === 'public' && query.length > 0 && type !== 'voter_id') {
+      return NextResponse.json({ success: false, error: 'Public users can only search by Voter ID. Please sign in with Google to search by Name.' }, { status: 403 });
+    }
     
     // --- RATE LIMITING LOGIC ---
     // TIER 3: ADMINS & PAID USERS - Unlimited total, but 25 requests per minute to prevent scraping

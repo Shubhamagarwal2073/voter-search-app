@@ -18,6 +18,7 @@ export default function Home() {
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const [quotaError, setQuotaError] = useState<{message: string, code: string} | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -54,6 +55,7 @@ export default function Home() {
   const fetchResults = async (searchQuery: string, type: string, wardQuery: string) => {
     setLoading(true);
     setQuotaError(null);
+    setApiError(null);
     try {
       const res = await fetch(`/api/voters?q=${encodeURIComponent(searchQuery)}&type=${type}&ward=${encodeURIComponent(wardQuery)}`);
       const json = await res.json();
@@ -64,11 +66,19 @@ export default function Home() {
         setLoading(false);
         return;
       }
+      
+      if (res.status === 400 || res.status === 403) {
+         setApiError(json.error);
+         setResults([]);
+         setLoading(false);
+         return;
+      }
 
       if (json.success) {
         setResults(json.data);
       } else {
         console.error('Error fetching data:', json.error);
+        setApiError(json.error || 'An unexpected error occurred.');
         setResults([]);
       }
     } catch (err) {
@@ -300,6 +310,16 @@ export default function Home() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-white">Results ({results.length})</h2>
             </div>
+            
+            {apiError && (
+              <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3 text-red-400">
+                <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                <div>
+                  <p className="font-medium text-red-300">Search Restricted</p>
+                  <p className="text-sm mt-1">{apiError}</p>
+                </div>
+              </div>
+            )}
 
           <div className="bg-[#0f172a]/60 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl">
             <div className="overflow-x-auto">
