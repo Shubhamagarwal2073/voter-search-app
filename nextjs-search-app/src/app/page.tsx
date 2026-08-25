@@ -99,59 +99,77 @@ export default function Home() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!query.trim()) {
+      setApiError('Please enter a valid search term before executing a query.');
+      setResults([]);
+      return;
+    }
     fetchResults(query, searchType, ward);
   };
 
   return (
-    <div className="min-h-screen bg-[#051424] text-[#d4e4fa] font-sans px-5 py-8 md:p-10 pt-16 md:pt-20 overflow-hidden relative">
+    <div className="min-h-screen bg-[#E9E1CC] text-[#24211A] font-['Lora'] px-5 py-8 md:p-10 pt-16 md:pt-20 relative">
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Courier+Prime:wght@400;700&display=swap');
+
+        .iws-noise-overlay::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          z-index: 10;
+          opacity: 0.05;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+          mix-blend-mode: multiply;
+        }
+      `}} />
+
+      {/* NOISE OVERLAY */}
+      <div className="iws-noise-overlay fixed inset-0 pointer-events-none z-10"></div>
 
       {/* Floating Marquee Promotion */}
-      <div className="fixed top-0 left-0 w-full z-50 bg-gradient-to-r from-emerald-900/60 via-emerald-800/60 to-emerald-900/60 backdrop-blur-xl border-b border-emerald-500/40 py-3 md:py-4 overflow-hidden pointer-events-none shadow-[0_4px_20px_rgba(16,185,129,0.3)]">
-        <div className="animate-marquee inline-block text-emerald-300 font-extrabold text-base md:text-xl tracking-[0.25em] uppercase drop-shadow-[0_0_12px_rgba(52,211,153,0.9)] whitespace-nowrap">
-          <span className="opacity-100 mx-6 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,1)] text-lg md:text-2xl">✨</span>  
-          RK COACHING CLASSES 
-          <span className="opacity-100 mx-6 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,1)] text-lg md:text-2xl">✨</span> 
-          RK COACHING CLASSES 
-          <span className="opacity-100 mx-6 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,1)] text-lg md:text-2xl">✨</span>
-          RK COACHING CLASSES 
-          <span className="opacity-100 mx-6 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,1)] text-lg md:text-2xl">✨</span>
+      <div className="fixed top-0 left-0 w-full z-50 bg-[#1E2A42] border-b-2 border-double border-[#6B6944] py-2 md:py-3 overflow-hidden pointer-events-none shadow-[0_4px_10px_rgba(30,42,66,0.2)]">
+        <div className="animate-marquee inline-block text-[#E9E1CC] font-['Courier_Prime'] font-bold text-sm md:text-base tracking-[0.2em] uppercase whitespace-nowrap">
+          <span className="mx-6 text-[#A2382B]">✦</span>
           RK COACHING CLASSES
+          <span className="mx-6 text-[#A2382B]">✦</span>
+          A DECADE OF EMPIRICAL EXCELLENCE
+          <span className="mx-6 text-[#A2382B]">✦</span>
+          RK COACHING CLASSES
+          <span className="mx-6 text-[#A2382B]">✦</span>
+          A DECADE OF EMPIRICAL EXCELLENCE
         </div>
       </div>
 
-      {/* Background ambient glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[400px] bg-blue-600/20 blur-[100px] md:blur-[120px] rounded-full pointer-events-none" />
-
-      <main className="max-w-6xl mx-auto relative z-10">
+      <main className="max-w-6xl mx-auto relative z-20">
 
         {/* Header */}
-        <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 md:mb-12">
+        <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 md:mb-12 border-b-[3px] border-double border-[#1E2A42] pb-6">
           <div>
-            <h1 className="text-2xl md:text-4xl font-bold text-white tracking-tight">Electoral Roll Search</h1>
-            <p className="text-[#8c909f] mt-1 md:mt-2 text-sm md:text-base">Unofficial Secure Voter Lookup Portal</p>
+            <h1 className="text-2xl md:text-4xl font-black text-[#1E2A42] font-['Fraunces'] tracking-tight">Electoral Roll Explorer</h1>
+            <p className="text-[#4A4536] mt-1 md:mt-2 text-sm md:text-base font-['Courier_Prime'] tracking-widest uppercase">Unofficial Secure Voter Lookup Portal</p>
           </div>
-          <div className="flex gap-3 items-center self-start md:self-auto">
+          <div className="flex gap-3 items-center self-start md:self-auto font-['Courier_Prime']">
             <button
               onClick={() => setShowStatsModal(true)}
-              className="px-4 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-xs md:text-sm font-medium flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all group"
+              className="px-4 py-2 bg-[#E1D7BC] border border-[#1E2A42] text-[#1E2A42] text-xs md:text-sm font-bold flex items-center gap-2 shadow-[2px_2px_0_rgba(30,42,66,1)] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-[1px_1px_0_rgba(30,42,66,1)] transition-all uppercase tracking-wider"
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
+              <span className="w-2 h-2 rounded-full bg-[#A2382B] animate-pulse"></span>
               Live Database {totalVoters > 0 && <span className="opacity-80 ml-1">({totalVoters.toLocaleString()} Records)</span>}
-              <svg className="w-4 h-4 ml-1 opacity-50 group-hover:opacity-100 transition-opacity hidden md:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
             </button>
             {session ? (
               <button
                 onClick={() => signOut()}
-                className="px-4 py-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-xs md:text-sm font-medium flex items-center gap-2 transition-all hover:shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                className="px-4 py-2 bg-[#A2382B] border border-[#A2382B] text-[#E9E1CC] text-xs md:text-sm font-bold flex items-center gap-2 shadow-[2px_2px_0_rgba(30,42,66,1)] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-[1px_1px_0_rgba(30,42,66,1)] transition-all uppercase tracking-wider"
               >
                 Logout
               </button>
             ) : (
               <a
                 href="/login"
-                className="px-4 py-1.5 rounded-full bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 text-xs md:text-sm font-medium flex items-center gap-2 transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+                className="px-4 py-2 bg-[#1E2A42] border border-[#1E2A42] text-[#E9E1CC] text-xs md:text-sm font-bold flex items-center gap-2 shadow-[2px_2px_0_rgba(30,42,66,1)] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-[1px_1px_0_rgba(30,42,66,1)] transition-all uppercase tracking-wider"
               >
                 Login
               </a>
@@ -165,194 +183,199 @@ export default function Home() {
           onClose={() => setShowStatsModal(false)}
         />
 
-          <section className="bg-[#0f172a]/60 backdrop-blur-xl border border-white/10 rounded-xl p-5 mb-8 shadow-2xl">
-            <form onSubmit={handleSearch} className="flex flex-col gap-5">
-              <div className="flex flex-col gap-4 items-stretch">
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-[#c2c6d6] mb-2 uppercase tracking-wider">Search Query</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-                      <svg className="h-5 w-5 text-[#8c909f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                    {searchType === 'name' ? (
-                      <ReactTransliterate
-                        value={query}
-                        onChangeText={(text) => setQuery(text)}
-                        lang="hi"
-                        placeholder="Search in Hindi (Type English)..."
-                        containerClassName={`w-full ${query.length === 0 ? 'hide-suggestions' : ''}`}
-                        className="w-full bg-[#051424]/50 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-[#8c909f] text-sm"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search..."
-                        className="w-full bg-[#051424]/50 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-[#8c909f] text-sm"
-                      />
-                    )}
+        <section className="bg-gradient-to-b from-[#E1D7BC] to-[#D8CCA9] border border-[#1E2A42] p-5 mb-8 shadow-[5px_5px_0_rgba(30,42,66,0.12)] relative">
+          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#6B6944]"></div>
+          <form onSubmit={handleSearch} className="flex flex-col gap-5 pl-2">
+            <div className="flex flex-col md:flex-row gap-4 items-stretch font-['Courier_Prime']">
+              <div className="flex-[2]">
+                <label className="block text-xs font-bold text-[#6B6944] mb-2 uppercase tracking-widest">Search Query</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+                    <svg className="h-5 w-5 text-[#1E2A42]/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                   </div>
+                  {searchType === 'name' ? (
+                    <ReactTransliterate
+                      value={query}
+                      onChangeText={(text) => setQuery(text)}
+                      lang="hi"
+                      placeholder="Search in Hindi (Type English)..."
+                      containerClassName={`w-full ${query.length === 0 ? 'hide-suggestions' : ''}`}
+                      className="w-full bg-[#E9E1CC] border border-[#1E2A42] py-3 pl-10 pr-4 text-[#1E2A42] focus:outline-none focus:ring-1 focus:ring-[#A2382B] transition-all placeholder:text-[#4A4536]/50 text-sm shadow-inner rounded-none"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search..."
+                      className="w-full bg-[#E9E1CC] border border-[#1E2A42] py-3 pl-10 pr-4 text-[#1E2A42] focus:outline-none focus:ring-1 focus:ring-[#A2382B] transition-all placeholder:text-[#4A4536]/50 text-sm shadow-inner rounded-none"
+                    />
+                  )}
                 </div>
-                <div className="w-full">
-                  <label className="block text-xs font-medium text-[#c2c6d6] mb-2 uppercase tracking-wider">Filter By</label>
-                  <select
-                    value={searchType}
-                    onChange={(e) => {
-                      if (!session && e.target.value !== 'voter_id') {
-                        window.location.href = '/login';
-                        return;
-                      }
-                      setSearchType(e.target.value);
-                    }}
-                    className="w-full bg-[#051424]/50 border border-white/10 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-blue-500 transition-all appearance-none text-sm"
-                  >
-                    <option value="voter_id">Voter ID</option>
-                    <option value="name">Name / Relative Name (Login Required)</option>
-                    <option value="house">House Number (Login Required)</option>
-                    <option value="serial">Serial Number (Login Required)</option>
-                  </select>
-                </div>
-                <div className="w-full">
-                  <label className="block text-xs font-medium text-[#c2c6d6] mb-2 uppercase tracking-wider">Ward No.</label>
-                  <select
-                    value={ward}
-                    onChange={(e) => setWard(e.target.value)}
-                    className="w-full bg-[#051424]/50 border border-white/10 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-blue-500 transition-all appearance-none text-sm"
-                  >
-                    <option value="">All</option>
-                    {availableWards.map(w => (
-                      <option key={w} value={w.toString()}>{w}</option>
-                    ))}
-                  </select>
-                </div>
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-bold text-[#6B6944] mb-2 uppercase tracking-widest">Filter By</label>
+                <select
+                  value={searchType}
+                  onChange={(e) => {
+                    if (!session && e.target.value !== 'voter_id') {
+                      window.location.href = '/login';
+                      return;
+                    }
+                    setSearchType(e.target.value);
+                  }}
+                  className="w-full bg-[#E9E1CC] border border-[#1E2A42] py-3 px-4 text-[#1E2A42] focus:outline-none focus:ring-1 focus:ring-[#A2382B] transition-all appearance-none text-sm shadow-inner rounded-none cursor-pointer"
+                >
+                  <option value="voter_id">Voter ID</option>
+                  <option value="name">Name / Relative (Login)</option>
+                  <option value="house">House Number (Login)</option>
+                  <option value="serial">Serial Number (Login)</option>
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-bold text-[#6B6944] mb-2 uppercase tracking-widest">Ward No.</label>
+                <select
+                  value={ward}
+                  onChange={(e) => setWard(e.target.value)}
+                  className="w-full bg-[#E9E1CC] border border-[#1E2A42] py-3 px-4 text-[#1E2A42] focus:outline-none focus:ring-1 focus:ring-[#A2382B] transition-all appearance-none text-sm shadow-inner rounded-none cursor-pointer"
+                >
+                  <option value="">All Wards</option>
+                  {availableWards.map(w => (
+                    <option key={w} value={w.toString()}>{w}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-end">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 px-8 rounded-lg shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] transition-all disabled:opacity-50 h-[48px] w-full mt-2 text-sm"
+                  className="bg-[#1E2A42] text-[#E9E1CC] font-bold py-3 px-8 shadow-[3px_3px_0_rgba(107,105,68,1)] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-[2px_2px_0_rgba(107,105,68,1)] transition-all disabled:opacity-50 h-[48px] w-full md:w-auto uppercase tracking-widest text-sm border border-[#1E2A42]"
                 >
-                  {loading ? 'Searching...' : 'Search'}
+                  {loading ? 'Searching' : 'Search'}
                 </button>
               </div>
-            </form>
-          </section>
+            </div>
+          </form>
+        </section>
 
         {/* Results Section */}
         {quotaError ? (
-          <section className="bg-gradient-to-br from-[#0f172a]/90 to-[#1e293b]/90 backdrop-blur-xl border border-red-500/30 rounded-xl p-8 mb-8 shadow-2xl text-center relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 via-orange-500 to-red-500"></div>
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.3)]">
-              <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          <section className="bg-gradient-to-b from-[#E1D7BC] to-[#D8CCA9] border border-[#A2382B] p-8 mb-8 shadow-[5px_5px_0_rgba(162,56,43,0.2)] text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-[#A2382B]"></div>
+            <div className="w-16 h-16 bg-[#A2382B]/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-[#A2382B]">
+              <svg className="w-8 h-8 text-[#A2382B]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
             </div>
-            <h2 className="text-2xl font-bold text-white mb-3">Search Limit Reached</h2>
-            <p className="text-[#c2c6d6] text-sm md:text-base mb-6 max-w-lg mx-auto">
+            <h2 className="text-2xl font-black text-[#1E2A42] mb-3 font-['Fraunces']">Search Limit Reached</h2>
+            <p className="text-[#4A4536] text-sm md:text-base mb-6 max-w-lg mx-auto">
               {quotaError.code === 'QUOTA_EXCEEDED_PUBLIC'
                 ? "You have used your 2 free public searches for today. To unlock more searches, please login securely using your Google Account."
                 : "Your guest search quota is exhausted. To get unlimited premium access to the entire electoral roll database, please contact the administrator or RK Coaching Classes to upgrade your account."}
             </p>
             {quotaError.code === 'QUOTA_EXCEEDED_PUBLIC' && !session ? (
-              <button onClick={() => window.location.href = '/api/auth/signin'} className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-white text-gray-900 font-bold hover:bg-gray-100 transition-all shadow-lg hover:shadow-xl hover:scale-105 transform">
+              <button onClick={() => window.location.href = '/api/auth/signin'} className="inline-flex items-center justify-center px-8 py-3 bg-[#E9E1CC] border border-[#1E2A42] text-[#1E2A42] font-['Courier_Prime'] font-bold tracking-widest uppercase hover:bg-white transition-colors shadow-[3px_3px_0_rgba(30,42,66,1)] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-[2px_2px_0_rgba(30,42,66,1)]">
                 <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /><path fill="none" d="M1 1h22v22H1z" /></svg>
                 Sign in with Google
               </button>
             ) : (
-              <div className="inline-block bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                <p className="text-blue-300 font-medium">Contact: Admin at RK Coaching Classes</p>
-                <p className="text-sm text-blue-200/70 mt-1">Upgrade your account for unlimited ward access</p>
+              <div className="inline-block bg-[#E9E1CC] border border-[#1E2A42] p-4 shadow-[2px_2px_0_rgba(30,42,66,1)]">
+                <p className="text-[#1E2A42] font-bold font-['Courier_Prime']">Contact: Admin at RK Coaching Classes</p>
+                <p className="text-sm text-[#4A4536] mt-1">Upgrade your account for unlimited ward access</p>
               </div>
             )}
           </section>
         ) : (
           <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-white">Results ({results.length})</h2>
+            <div className="flex items-baseline gap-[14px] mt-12 mb-2 pb-2.5 border-b-[1.5px] border-[#1E2A42]">
+              <span className="font-['Courier_Prime'] text-[12px] font-bold tracking-[0.14em] text-[#1E2A42] bg-[#E1D7BC] border border-[#1E2A42] px-2 py-[3px] whitespace-nowrap">Annexure B</span>
+              <h2 className="font-['Fraunces'] font-medium text-[22px] m-0 text-[#24211A]">Search Results ({results.length})</h2>
             </div>
+            <p className="font-['Courier_Prime'] text-[12px] text-[#4A4536] mt-2 mb-6">Live query output from the electoral database.</p>
 
             {apiError && (
-              <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3 text-red-400">
+              <div className="mb-6 p-4 bg-[#E1D7BC] border-l-[6px] border-[#A2382B] shadow-[2px_2px_0_rgba(30,42,66,0.1)] flex items-start gap-3 text-[#A2382B]">
                 <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                 <div>
-                  <p className="font-medium text-red-300">Search Restricted</p>
-                  <p className="text-sm mt-1">{apiError}</p>
+                  <p className="font-bold text-[#A2382B] font-['Courier_Prime'] uppercase">Search Restricted</p>
+                  <p className="text-sm mt-1 text-[#24211A] font-['Lora']">{apiError}</p>
                 </div>
               </div>
             )}
 
-            <div className="bg-[#0f172a]/60 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl">
+            <div className="bg-[#E1D7BC] border border-[#1E2A42] shadow-[5px_5px_0_rgba(30,42,66,0.12)] overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm whitespace-nowrap">
-                  <thead className="uppercase tracking-wider border-b border-white/5 bg-[#1e293b]/50 text-[#8c909f]">
+                  <thead className="uppercase tracking-widest border-b-[2px] border-[#1E2A42] bg-[#1E2A42] text-[#E9E1CC] font-['Courier_Prime'] text-xs">
                     <tr>
-                      <th scope="col" className="hidden sm:table-cell px-6 py-4 font-medium text-center">Ward</th>
-                      <th scope="col" className="hidden sm:table-cell px-6 py-4 font-medium text-center">Page No.</th>
-                      <th scope="col" className="hidden lg:table-cell px-6 py-4 font-medium">Source File</th>
-                      <th scope="col" className="px-6 py-4 font-medium">Serial No.</th>
-                      <th scope="col" className="px-4 md:px-6 py-4 font-medium">Name (Hindi)</th>
-                      <th scope="col" className="px-4 md:px-6 py-4 font-medium">Voter ID</th>
-                      <th scope="col" className="hidden md:table-cell px-6 py-4 font-medium">Relative's Name</th>
-                      <th scope="col" className="hidden lg:table-cell px-6 py-4 font-medium">Relation</th>
-                      <th scope="col" className="hidden sm:table-cell px-4 md:px-6 py-4 font-medium text-center">Age</th>
-                      <th scope="col" className="hidden sm:table-cell px-4 md:px-6 py-4 font-medium">Gender</th>
-                      <th scope="col" className="hidden md:table-cell px-6 py-4 font-medium">House No.</th>
-                      <th scope="col" className="sm:hidden px-4 py-4 font-medium text-right"></th>
+                      <th scope="col" className="hidden sm:table-cell px-6 py-4 font-bold text-center">Ward</th>
+                      <th scope="col" className="hidden sm:table-cell px-6 py-4 font-bold text-center">Page</th>
+                      <th scope="col" className="hidden lg:table-cell px-6 py-4 font-bold">Source File</th>
+                      <th scope="col" className="px-6 py-4 font-bold">Serial No.</th>
+                      <th scope="col" className="px-4 md:px-6 py-4 font-bold">Name (Hindi)</th>
+                      <th scope="col" className="px-4 md:px-6 py-4 font-bold">Voter ID</th>
+                      <th scope="col" className="hidden md:table-cell px-6 py-4 font-bold">Relative's Name</th>
+                      <th scope="col" className="hidden lg:table-cell px-6 py-4 font-bold">Relation</th>
+                      <th scope="col" className="hidden sm:table-cell px-4 md:px-6 py-4 font-bold text-center">Age</th>
+                      <th scope="col" className="hidden sm:table-cell px-4 md:px-6 py-4 font-bold">Gender</th>
+                      <th scope="col" className="hidden md:table-cell px-6 py-4 font-bold">House No.</th>
+                      <th scope="col" className="sm:hidden px-4 py-4 font-bold text-right"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-[#B7A97E]">
                     {results.length > 0 ? (
                       results.map((voter) => (
                         <React.Fragment key={voter.id}>
-                          <tr className="hover:bg-white/5 transition-colors cursor-pointer sm:cursor-default" onClick={() => { if (window.innerWidth < 640) toggleRow(voter.id) }}>
-                            <td className="hidden sm:table-cell px-6 py-4 text-center">
-                              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-bold text-sm shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                          <tr className="hover:bg-[#D8CCA9] transition-colors cursor-pointer sm:cursor-default" onClick={() => { if (window.innerWidth < 640) toggleRow(voter.id) }}>
+                            <td className="hidden sm:table-cell px-6 py-4 text-center font-['Courier_Prime']">
+                              <span className="inline-block px-2 py-0.5 bg-[#A2382B]/10 text-[#A2382B] border border-[#A2382B] font-bold">
                                 {voter.ward || '-'}
                               </span>
                             </td>
-                            <td className="hidden sm:table-cell px-6 py-4 text-center font-mono text-[#8c909f]">
+                            <td className="hidden sm:table-cell px-6 py-4 text-center font-['Courier_Prime'] text-[#1E2A42] font-bold">
                               {voter.page_number || '-'}
                             </td>
-                            <td className="hidden lg:table-cell px-6 py-4 text-xs font-mono text-[#8c909f] max-w-[150px] truncate" title={voter.source_file}>
+                            <td className="hidden lg:table-cell px-6 py-4 text-xs font-['Courier_Prime'] text-[#4A4536] max-w-[150px] truncate" title={voter.source_file}>
                               {voter.source_file || '-'}
                             </td>
-                            <td className="px-6 py-4">
-                              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono text-sm shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                            <td className="px-6 py-4 font-['Courier_Prime']">
+                              <span className="inline-block px-2 py-0.5 bg-[#1E2A42]/10 text-[#1E2A42] border border-[#1E2A42] font-bold">
                                 {voter.serial_number}
                               </span>
                             </td>
-                            <td className="px-4 md:px-6 py-4 font-semibold text-blue-200">{voter.name_hi}</td>
-                            <td className="px-4 md:px-6 py-4">
-                              <span className="inline-flex items-center justify-center px-3 py-1 rounded-md bg-blue-500/10 text-blue-300 border border-blue-500/30 font-mono text-sm tracking-wide">
+                            <td className="px-4 md:px-6 py-4 font-bold text-[#1E2A42]">{voter.name_hi}</td>
+                            <td className="px-4 md:px-6 py-4 font-['Courier_Prime']">
+                              <span className="inline-block px-2 py-0.5 text-[#1E2A42] border border-dotted border-[#1E2A42] font-bold tracking-wide">
                                 {voter.voter_id}
                               </span>
                             </td>
-                            <td className="hidden md:table-cell px-6 py-4 text-[#d4e4fa]">{voter.relative_name_hi}</td>
-                            <td className="hidden lg:table-cell px-6 py-4 text-[#8c909f] capitalize">{voter.relative_type}</td>
-                            <td className="hidden sm:table-cell px-4 md:px-6 py-4 text-center font-mono text-white/90">{voter.age}</td>
-                            <td className="hidden sm:table-cell px-4 md:px-6 py-4 capitalize">
-                              <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-semibold ${voter.gender === 'male' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' :
-                                voter.gender === 'female' ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20' :
-                                  'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                            <td className="hidden md:table-cell px-6 py-4 text-[#4A4536] font-medium">{voter.relative_name_hi}</td>
+                            <td className="hidden lg:table-cell px-6 py-4 text-[#6B6944] capitalize font-['Courier_Prime'] text-xs">{voter.relative_type}</td>
+                            <td className="hidden sm:table-cell px-4 md:px-6 py-4 text-center font-['Courier_Prime'] font-bold text-[#1E2A42]">{voter.age}</td>
+                            <td className="hidden sm:table-cell px-4 md:px-6 py-4 capitalize font-['Courier_Prime'] text-xs">
+                              <span className={`inline-block px-2 py-0.5 font-bold border ${voter.gender === 'male' ? 'bg-[#1E2A42]/10 text-[#1E2A42] border-[#1E2A42]' :
+                                voter.gender === 'female' ? 'bg-[#A2382B]/10 text-[#A2382B] border-[#A2382B]' :
+                                  'bg-[#6B6944]/10 text-[#6B6944] border-[#6B6944]'
                                 }`}>
                                 {voter.gender}
                               </span>
                             </td>
-                            <td className="hidden md:table-cell px-6 py-4 font-mono text-[#8c909f]">{voter.house_number}</td>
-                            <td className="sm:hidden px-4 py-4 text-right text-[#8c909f]">
+                            <td className="hidden md:table-cell px-6 py-4 font-['Courier_Prime'] text-[#1E2A42] font-bold">{voter.house_number}</td>
+                            <td className="sm:hidden px-4 py-4 text-right text-[#1E2A42]">
                               <svg className={`w-5 h-5 inline-block transition-transform ${expandedRows.has(voter.id) ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                             </td>
                           </tr>
                           {expandedRows.has(voter.id) && (
-                            <tr className="sm:hidden bg-white/[0.02]">
-                              <td colSpan={4} className="px-4 py-4 border-t border-white/5">
-                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                  <div><span className="text-[#8c909f] text-xs uppercase block mb-0.5">Ward</span> <span className="font-bold text-red-400">{voter.ward || '-'}</span></div>
-                                  <div><span className="text-[#8c909f] text-xs uppercase block mb-0.5">Page No.</span> <span className="font-mono text-[#d4e4fa]">{voter.page_number || '-'}</span></div>
-                                  <div><span className="text-[#8c909f] text-xs uppercase block mb-0.5">Age</span> <span className="font-mono text-[#d4e4fa]">{voter.age}</span></div>
-                                  <div><span className="text-[#8c909f] text-xs uppercase block mb-0.5">Gender</span> <span className="capitalize text-[#d4e4fa]">{voter.gender}</span></div>
-                                  <div className="col-span-2"><span className="text-[#8c909f] text-xs uppercase block mb-0.5">Relative ({voter.relative_type})</span> <span className="text-[#d4e4fa]">{voter.relative_name_hi}</span></div>
-                                  <div className="col-span-2"><span className="text-[#8c909f] text-xs uppercase block mb-0.5">House No.</span> <span className="font-mono text-[#d4e4fa]">{voter.house_number}</span></div>
-                                  <div className="col-span-2"><span className="text-[#8c909f] text-xs uppercase block mb-0.5">Source File</span> <span className="font-mono text-xs text-[#8c909f] break-all">{voter.source_file || '-'}</span></div>
+                            <tr className="sm:hidden bg-[#E9E1CC]">
+                              <td colSpan={4} className="px-4 py-4 border-t border-dashed border-[#1E2A42]">
+                                <div className="grid grid-cols-2 gap-3 text-sm font-['Courier_Prime']">
+                                  <div><span className="text-[#6B6944] text-xs uppercase block mb-0.5">Ward</span> <span className="font-bold text-[#A2382B]">{voter.ward || '-'}</span></div>
+                                  <div><span className="text-[#6B6944] text-xs uppercase block mb-0.5">Page No.</span> <span className="font-bold text-[#1E2A42]">{voter.page_number || '-'}</span></div>
+                                  <div><span className="text-[#6B6944] text-xs uppercase block mb-0.5">Age</span> <span className="font-bold text-[#1E2A42]">{voter.age}</span></div>
+                                  <div><span className="text-[#6B6944] text-xs uppercase block mb-0.5">Gender</span> <span className="capitalize font-bold text-[#1E2A42]">{voter.gender}</span></div>
+                                  <div className="col-span-2 font-['Lora']"><span className="text-[#6B6944] text-xs uppercase block mb-0.5 font-['Courier_Prime']">Relative ({voter.relative_type})</span> <span className="font-bold text-[#1E2A42]">{voter.relative_name_hi}</span></div>
+                                  <div className="col-span-2"><span className="text-[#6B6944] text-xs uppercase block mb-0.5">House No.</span> <span className="font-bold text-[#1E2A42]">{voter.house_number}</span></div>
+                                  <div className="col-span-2"><span className="text-[#6B6944] text-xs uppercase block mb-0.5">Source File</span> <span className="text-xs text-[#4A4536] break-all">{voter.source_file || '-'}</span></div>
                                 </div>
                               </td>
                             </tr>
@@ -361,8 +384,8 @@ export default function Home() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={9} className="px-6 py-12 text-center text-[#8c909f]">
-                          {loading ? 'Searching database...' : 'No records found.'}
+                        <td colSpan={11} className="px-6 py-16 text-center font-['Courier_Prime'] text-[#4A4536]">
+                          {loading ? 'SEARCHING ARCHIVES...' : 'NO RECORDS FOUND IN CURRENT FILE.'}
                         </td>
                       </tr>
                     )}
@@ -374,12 +397,17 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="relative z-10 mt-16 pb-8 flex flex-col items-center justify-center gap-3 text-[#8c909f] text-sm">
-        <p>© 2026 Voter_Scrapper (Election)</p>
-        <a href="/about" className="inline-flex px-3 py-1.5 text-xs font-bold rounded-full bg-[#F16524] text-white shadow-md hover:scale-105 transition-transform items-center gap-1.5">
-          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
-          Powered by IWS
-        </a>
+      <footer className="relative z-20 mt-16 pb-8 pt-8 flex flex-col items-center justify-center gap-4 text-[#4A4536] text-sm border-t-[3px] border-double border-[#1E2A42] font-['Courier_Prime'] max-w-6xl mx-auto w-full">
+        <p className="uppercase tracking-widest font-bold">© 2026 Voter_Scrapper (Election)</p>
+        <div className="flex items-center gap-4 text-xs font-bold tracking-widest uppercase">
+          <a href="/about" className="text-[#1E2A42] hover:text-[#A2382B] transition-colors border-b-[1.5px] border-[#1E2A42] hover:border-[#A2382B] pb-[2px]">
+            Imposter World Services
+          </a>
+          <span className="text-[#B7A97E]">|</span>
+          <a href="/about" className="text-[#1E2A42] hover:text-[#A2382B] transition-colors border-b-[1.5px] border-[#1E2A42] hover:border-[#A2382B] pb-[2px]">
+            Legal & Notices
+          </a>
+        </div>
       </footer>
     </div>
   );

@@ -1,106 +1,673 @@
 "use client";
 
-import React from 'react';
-
-import Link from 'next/link';
+import React, { useEffect, useRef } from "react";
+import Link from "next/link";
+import Image from "next/image";
 
 export default function AboutPage() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("in");
+          }
+        });
+      },
+      { threshold: 0.35 }
+    );
+
+    const idcard = containerRef.current?.querySelector("#idcard");
+    const seal = containerRef.current?.querySelector("#seal");
+
+    if (idcard) obs.observe(idcard);
+    if (seal) obs.observe(seal);
+
+    return () => obs.disconnect();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white overflow-hidden relative selection:bg-[#F16524] selection:text-white">
-      {/* Dynamic Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#F16524]/10 blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/10 blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
-      </div>
+    <div className="iws-container" ref={containerRef}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Courier+Prime:wght@400;700&display=swap');
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-12 md:py-20">
-        
-        {/* Header */}
-        <Link 
-          href="/login" 
-          className="inline-flex items-center gap-2 text-[#8c909f] hover:text-white mb-12 transition-colors group"
-        >
-          <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-          <span>Back</span>
-        </Link>
+        .iws-container {
+          --paper: #E9E1CC;
+          --paper-card: #E1D7BC;
+          --paper-deep: #D8CCA9;
+          --ink: #24211A;
+          --ink-soft: #4A4536;
+          --navy: #1E2A42;
+          --stamp: #A2382B;
+          --stamp-dim: #A2382B99;
+          --olive: #6B6944;
+          --line: #B7A97E;
+          --line-soft: #C9BE97;
 
-        <div className="text-center mb-16 space-y-4">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-[#F16524] to-[#FF9642] shadow-[0_0_40px_rgba(241,101,36,0.3)] mb-6">
-            <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            </svg>
+          min-height: 100vh;
+          background:
+            radial-gradient(ellipse at 20% 0%, rgba(255,255,255,0.35), transparent 55%),
+            var(--paper);
+          color: var(--ink);
+          font-family: 'Lora', serif;
+          -webkit-font-smoothing: antialiased;
+          position: relative;
+          padding-bottom: 50px;
+          margin-top: -64px; /* Adjust if you have a navbar to make it fullscreen, otherwise 0 */
+          padding-top: 64px; 
+        }
+
+        .iws-container::before {
+          content:"";
+          position: absolute;
+          inset:0;
+          pointer-events:none;
+          z-index: 50;
+          opacity: 0.05;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+          mix-blend-mode: multiply;
+        }
+
+        .iws-container * { box-sizing: border-box; }
+
+        @media (prefers-reduced-motion: reduce){
+          .iws-container * { animation: none !important; transition: none !important; }
+        }
+
+        .iws-wrap {
+          max-width: 880px;
+          margin: 0 auto;
+          padding: 0 28px;
+          position: relative;
+          z-index: 1;
+        }
+
+        .iws-container .mono { font-family: 'Courier Prime', monospace; }
+
+        .iws-container .eyebrow {
+          font-family: 'Courier Prime', monospace;
+          font-size: 12.5px;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--stamp);
+          font-weight: 700;
+        }
+
+        /* ---------- Letterhead ---------- */
+        .iws-container header.letterhead {
+          border-bottom: 3px double var(--navy);
+          padding: 22px 0 14px;
+        }
+        .iws-container header.letterhead .row {
+          display:flex;
+          align-items:center;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+        .iws-container .brandmark {
+          display:flex;
+          align-items:center;
+          gap: 14px;
+        }
+        .iws-container .brandmark .crest {
+          width: 46px; height:46px; flex:0 0 auto;
+          border-radius:50%;
+          border: 2px solid var(--navy);
+          display:flex; align-items:center; justify-content:center;
+          font-family:'Fraunces', serif; font-weight:600; font-size:16px;
+          color: var(--navy);
+          background: var(--paper-card);
+        }
+        .iws-container .brandmark .name {
+          font-family:'Fraunces', serif;
+          font-weight: 600;
+          font-size: 19px;
+          letter-spacing: 0.03em;
+          line-height:1.15;
+        }
+        .iws-container .brandmark .name small {
+          display:block;
+          font-family:'Courier Prime', monospace;
+          font-size: 11px;
+          letter-spacing: 0.18em;
+          color: var(--ink-soft);
+          font-weight: 400;
+          margin-top: 3px;
+        }
+        .iws-container .filecode {
+          font-family:'Courier Prime', monospace;
+          font-size: 12px;
+          color: var(--ink-soft);
+          text-align:right;
+          line-height:1.6;
+        }
+
+        /* ---------- Hero ---------- */
+        .iws-container .hero {
+          padding: 64px 0 40px;
+          position: relative;
+        }
+        .iws-container .hero h1 {
+          font-family:'Fraunces', serif;
+          font-weight: 500;
+          font-style: italic;
+          font-size: clamp(28px, 4.6vw, 44px);
+          line-height: 1.22;
+          margin: 14px 0 22px;
+          max-width: 15ch;
+          color: var(--ink);
+        }
+        .iws-container .hero h1 em {
+          font-style: normal;
+          font-weight: 600;
+          color: var(--stamp);
+        }
+        .iws-container .hero p.lede {
+          max-width: 54ch;
+          font-size: 17px;
+          line-height: 1.7;
+          color: var(--ink-soft);
+        }
+        .iws-container .hero .facts {
+          margin-top: 30px;
+          display:grid;
+          grid-template-columns: repeat(3, auto);
+          gap: 26px 40px;
+          font-family:'Courier Prime', monospace;
+          font-size: 12px;
+        }
+        .iws-container .hero .facts dt {
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--olive);
+          margin-bottom: 4px;
+        }
+        .iws-container .hero .facts dd {
+          margin:0;
+          font-size: 13.5px;
+          color: var(--ink);
+        }
+
+        /* ---------- Section headers (Annexure style) ---------- */
+        .iws-container .annexure-head {
+          display:flex;
+          align-items: baseline;
+          gap: 14px;
+          margin: 78px 0 6px;
+          padding-bottom: 10px;
+          border-bottom: 1.5px solid var(--navy);
+        }
+        .iws-container .annexure-head .tag {
+          font-family:'Courier Prime', monospace;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          color: var(--navy);
+          background: var(--paper-card);
+          border: 1px solid var(--navy);
+          padding: 3px 8px;
+          white-space: nowrap;
+        }
+        .iws-container .annexure-head h2 {
+          font-family:'Fraunces', serif;
+          font-weight: 500;
+          font-size: 22px;
+          margin: 0;
+          color: var(--ink);
+        }
+        .iws-container .section-note {
+          font-family:'Courier Prime', monospace;
+          font-size: 12px;
+          color: var(--ink-soft);
+          margin: 10px 0 30px;
+        }
+
+        /* ---------- Founder / ID card section ---------- */
+        .iws-container .founder {
+          display:grid;
+          grid-template-columns: 260px 1fr;
+          gap: 40px;
+          align-items: start;
+        }
+
+        .iws-container .idcard {
+          background: linear-gradient(180deg, var(--paper-card), var(--paper-deep));
+          border: 1px solid var(--navy);
+          box-shadow: 5px 5px 0 rgba(30,42,66,0.12);
+          padding: 0;
+          position: relative;
+          opacity: 0;
+          transform: translateY(14px) rotate(-1.2deg);
+          transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .iws-container .idcard.in { opacity:1; transform: translateY(0) rotate(-1.2deg); }
+
+        .iws-container .idcard .strip {
+          background: var(--navy);
+          color: var(--paper);
+          font-family:'Courier Prime', monospace;
+          font-size: 10.5px;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          padding: 8px 14px;
+          display:flex;
+          justify-content: space-between;
+        }
+        .iws-container .idcard .body { padding: 18px; }
+        .iws-container .idcard .photo {
+          width: 72px; height: 84px;
+          border: 1px solid var(--olive);
+          background: var(--paper);
+          display:flex; align-items:center; justify-content:center;
+          font-family:'Fraunces', serif;
+          font-size: 26px;
+          font-weight: 600;
+          color: var(--navy);
+          margin-bottom: 14px;
+        }
+        .iws-container .idcard .field { margin-bottom: 10px; }
+        .iws-container .idcard .field label {
+          display:block;
+          font-family:'Courier Prime', monospace;
+          font-size: 9.5px;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--olive);
+        }
+        .iws-container .idcard .field .val {
+          font-family:'Fraunces', serif;
+          font-size: 15px;
+          line-height: 1.35;
+          color: var(--ink);
+        }
+        .iws-container .idcard .field .val.small {
+          font-family:'Lora', serif;
+          font-size: 12.5px;
+          color: var(--ink-soft);
+        }
+        .iws-container .idcard .barcode {
+          margin-top: 14px;
+          height: 22px;
+          background: repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 5px, var(--ink) 5px 6px, transparent 6px 10px);
+          opacity: 0.75;
+        }
+        .iws-container .idcard .verify {
+          border-top: 1px dashed var(--olive);
+          margin-top: 14px;
+          padding-top: 10px;
+          font-family:'Courier Prime', monospace;
+          font-size: 11px;
+        }
+        .iws-container .idcard .verify a { color: var(--navy); text-decoration: none; }
+        .iws-container .idcard .verify a:hover { text-decoration: underline; }
+
+        .iws-container .founder-copy p {
+          line-height: 1.75;
+          font-size: 15.5px;
+          color: var(--ink);
+          margin: 0 0 16px;
+        }
+        .iws-container .founder-copy p:first-child::first-letter {
+          font-family:'Fraunces', serif;
+          font-weight: 600;
+          font-size: 42px;
+          float:left;
+          line-height: 0.8;
+          padding: 6px 8px 0 0;
+          color: var(--stamp);
+        }
+
+        /* ---------- Seal / signature element ---------- */
+        .iws-container .seal-block {
+          display:flex;
+          justify-content:center;
+          margin: 46px 0 6px;
+        }
+        .iws-container .seal {
+          width: 168px; height: 168px;
+          opacity: 0;
+          transform: scale(0.6) rotate(-18deg);
+          transition: opacity 0.5s ease, transform 0.6s cubic-bezier(.2,1.4,.4,1);
+          mix-blend-mode: multiply;
+        }
+        .iws-container .seal.in { opacity: 0.92; transform: scale(1) rotate(-9deg); }
+
+        /* ---------- Case files ---------- */
+        .iws-container .cases { display:flex; flex-direction:column; gap: 26px; }
+        .iws-container .case {
+          position: relative;
+          border: 1px solid var(--navy);
+          background: var(--paper-card);
+          padding: 24px 26px;
+          overflow: hidden;
+        }
+        .iws-container .case::before {
+          content:"";
+          position:absolute; left:0; top:0; bottom:0; width:6px;
+          background: var(--olive);
+        }
+        .iws-container .case .top {
+          display:flex;
+          justify-content: space-between;
+          align-items:flex-start;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+        .iws-container .case .idline {
+          font-family:'Courier Prime', monospace;
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          color: var(--olive);
+          margin-bottom: 6px;
+        }
+        .iws-container .case h3 {
+          font-family:'Fraunces', serif;
+          font-weight: 600;
+          font-size: 21px;
+          margin: 0 0 10px;
+          max-width: 34ch;
+          color: var(--ink);
+        }
+        .iws-container .case p {
+          font-size: 15px;
+          line-height: 1.7;
+          color: var(--ink-soft);
+          margin: 0 0 14px;
+          max-width: 58ch;
+        }
+        .iws-container .case .meta {
+          display:flex;
+          gap: 22px;
+          flex-wrap:wrap;
+          font-family:'Courier Prime', monospace;
+          font-size: 11.5px;
+          color: var(--ink-soft);
+        }
+        .iws-container .case .meta strong {
+          display:block;
+          font-size: 10px;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--olive);
+          margin-bottom: 2px;
+          font-weight: 400;
+        }
+        .iws-container .case-link {
+          display: inline-block;
+          margin-top: 16px;
+          font-family:'Courier Prime', monospace;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          color: var(--navy);
+          border-bottom: 1.5px solid var(--navy);
+          padding-bottom: 2px;
+          text-decoration: none;
+        }
+        .iws-container .case-link:hover { color: var(--stamp); border-color: var(--stamp); }
+
+        .iws-container .live-stamp {
+          font-family:'Courier Prime', monospace;
+          font-weight: 700;
+          font-size: 12px;
+          letter-spacing: 0.14em;
+          color: var(--stamp);
+          border: 2px solid var(--stamp);
+          padding: 5px 10px;
+          transform: rotate(-6deg);
+          white-space: nowrap;
+          flex: 0 0 auto;
+        }
+
+        /* ---------- Footer ---------- */
+        .iws-container footer {
+          margin-top: 90px;
+          border-top: 3px double var(--navy);
+          padding: 24px 0 50px;
+          display:flex;
+          justify-content: space-between;
+          align-items:flex-end;
+          gap: 20px;
+          flex-wrap: wrap;
+        }
+        .iws-container footer .fine {
+          font-family:'Courier Prime', monospace;
+          font-size: 11.5px;
+          color: var(--ink-soft);
+          line-height: 1.7;
+          max-width: 46ch;
+        }
+        .iws-container footer a { color: var(--navy); text-decoration: none; }
+        .iws-container footer a:hover { text-decoration: underline; }
+        .iws-container footer .fine strong { color: var(--ink); }
+
+        @media (max-width: 700px){
+          .iws-container .founder { grid-template-columns: 1fr; }
+          .iws-container .idcard { max-width: 300px; }
+          .iws-container .annexure-head { flex-wrap: wrap; }
+        }
+      ` }} />
+
+      <div className="iws-wrap">
+        <header className="letterhead">
+          <div className="row">
+            <div className="brandmark">
+              <div className="crest">IWS</div>
+              <div className="name">
+                Imposter World Services
+                <small>DEPT. OF SOFTWARE &amp; RELATED MATTERS</small>
+              </div>
+            </div>
+            <div className="filecode">
+              FILE NO. IWS/2026/001<br />
+              JAIPUR, RAJASTHAN
+            </div>
           </div>
-          <h1 className="text-4xl md:text-6xl font-black tracking-tight text-white">
-            Imposter World Services
+        </header>
+
+        <section className="hero">
+          <div className="eyebrow">Notification</div>
+          <h1>
+            This is to certify that no such department exists — <em>only one person, building things that do.</em>
           </h1>
-          <p className="text-xl md:text-2xl text-[#8c909f] font-medium">
-            Building the Future of Digital Search
+          <p className="lede">
+            Imposter World Services is the name Shubham Agrawal ships work under. There&apos;s no office, no headcount, and no committee — just one engineer, two products currently in production, and a habit of finishing what he starts.
           </p>
+
+          <dl className="facts">
+            <div>
+              <dt>Founded by</dt>
+              <dd>Shubham Agrawal</dd>
+            </div>
+            <div>
+              <dt>Staff strength</dt>
+              <dd>1 (one)</dd>
+            </div>
+            <div>
+              <dt>Products live</dt>
+              <dd>2 (two)</dd>
+            </div>
+          </dl>
+        </section>
+
+        <div className="annexure-head">
+          <span className="tag">Annexure A</span>
+          <h2>Particulars of the Proprietor</h2>
+        </div>
+        <p className="section-note">
+          Filed in accordance with the sole founder&apos;s habit of building instead of waiting.
+        </p>
+
+        <section className="founder">
+          <div className="idcard" id="idcard">
+            <div className="strip">
+              <span>IWS · ID CARD</span>
+              <span>0001</span>
+            </div>
+            <div className="body">
+              <div className="photo relative overflow-hidden group">
+                <Image 
+                  src="/profile.jpg" 
+                  alt="Shubham Agrawal" 
+                  fill 
+                  className="object-cover transition-all duration-500"
+                />
+              </div>
+              <div className="field">
+                <label>Name</label>
+                <div className="val">Shubham Agrawal</div>
+              </div>
+              <div className="field">
+                <label>Designation</label>
+                <div className="val small">Founder, Sole Proprietor &amp; Only Employee</div>
+              </div>
+              <div className="field">
+                <label>Education</label>
+                <div className="val small">
+                  Jaipur Engineering College and Research Centre (JECRC), Jaipur, Rajasthan
+                </div>
+              </div>
+              <div className="barcode"></div>
+              <div className="verify">
+                Verifying authority:<br />
+                <a
+                  href="https://www.linkedin.com/in/shubham-agrawal-856601244"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  linkedin.com/in/shubham-agrawal-856601244 ↗
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="founder-copy">
+            <p>
+              IWS isn&apos;t a registered company in any legal sense that matters here — it&apos;s the letterhead Shubham puts on his own work so it reads like an organisation instead of a side project. Everything filed under this name is designed, built, deployed, and kept running by him directly, with no team standing between the idea and the shipped product.
+            </p>
+            <p>
+              He studied at Jaipur Engineering College and Research Centre (JECRC) in Jaipur, and has kept building past graduation — trading coursework for two products that real people currently use. The &quot;imposter&quot; in the name is the joke and the point: the work gets judged on whether it runs, not on whether the org chart looks convincing.
+            </p>
+          </div>
+        </section>
+
+        <div className="seal-block">
+          <svg className="seal" id="seal" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter id="rough">
+                <feTurbulence type="fractalNoise" baseFrequency="0.02 0.04" numOctaves="2" result="n" />
+                <feDisplacementMap in="SourceGraphic" in2="n" scale="4" />
+              </filter>
+              <path id="ringtop" d="M 30,100 A 70,70 0 0 1 170,100" />
+              <path id="ringbot" d="M 170,100 A 70,70 0 0 1 30,100" />
+            </defs>
+            <g filter="url(#rough)" fill="none" stroke="#A2382B" strokeWidth="2.5">
+              <circle cx="100" cy="100" r="92" />
+              <circle cx="100" cy="100" r="80" />
+            </g>
+            <g filter="url(#rough)" fill="#A2382B" fontFamily="Courier Prime, monospace" fontSize="12.5" letterSpacing="2.5">
+              <text>
+                <textPath href="#ringtop" startOffset="50%" textAnchor="middle">
+                  IMPOSTER WORLD SERVICES
+                </textPath>
+              </text>
+              <text>
+                <textPath href="#ringbot" startOffset="50%" textAnchor="middle">
+                  CERTIFIED · GENUINE ARTICLE
+                </textPath>
+              </text>
+            </g>
+            <g filter="url(#rough)" fill="#A2382B" textAnchor="middle" fontFamily="Fraunces, serif">
+              <text x="100" y="95" fontSize="17" fontWeight="600">NOT AN</text>
+              <text x="100" y="118" fontSize="17" fontWeight="600">IMPOSTER</text>
+            </g>
+            <g filter="url(#rough)" stroke="#A2382B" strokeWidth="1.5">
+              <line x1="60" y1="130" x2="140" y2="130" />
+            </g>
+          </svg>
         </div>
 
-        {/* Content Grid */}
-        <div className="grid md:grid-cols-2 gap-6">
-          
-          {/* IWS Card */}
-          <div className="bg-[#1e293b]/40 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#F16524] to-[#FF9642] opacity-50 group-hover:opacity-100 transition-opacity"></div>
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 bg-[#F16524]/10 rounded-2xl text-[#F16524]">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div className="annexure-head">
+          <span className="tag">Annexure B</span>
+          <h2>Active Case Files — 2 Live</h2>
+        </div>
+        <p className="section-note">Both filed as production systems, not prototypes. Both currently in service.</p>
+
+        <section className="cases">
+          <article className="case">
+            <div className="top">
+              <div>
+                <div className="idline">CASE FILE / 001 / PUBLIC DATA TOOL</div>
+                <h3>
+                  Electoral Roll Explorer<br />Advanced Voter Search
+                </h3>
               </div>
-              <h2 className="text-2xl font-bold">About IWS</h2>
+              <span className="live-stamp">LIVE</span>
             </div>
-            <p className="text-[#8c909f] leading-relaxed mb-6">
-              Imposter World Services (IWS) is a cutting-edge development agency focused on creating lightning-fast, ultra-secure web applications. Our mission is to transform complex datasets into accessible, beautifully designed user interfaces.
+            <p>
+              A search tool built to make electoral roll data easier to navigate — letting people look up and browse voter records directly, instead of fighting a slow, form-heavy government portal to find the same information.
             </p>
-            <ul className="space-y-3">
-              <li className="flex items-center gap-3 text-sm text-gray-300">
-                <svg className="w-5 h-5 text-[#F16524]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                Military-grade data security
-              </li>
-              <li className="flex items-center gap-3 text-sm text-gray-300">
-                <svg className="w-5 h-5 text-[#F16524]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-                Next.js & React architecture
-              </li>
-            </ul>
+            <div className="meta">
+              <div>
+                <strong>Category</strong>Civic / public records
+              </div>
+              <div>
+                <strong>Built &amp; run by</strong>Shubham Agrawal
+              </div>
+              <div>
+                <strong>Status</strong>In production
+              </div>
+            </div>
+            <a className="case-link" href="https://34-61-251-113.nip.io/" target="_blank" rel="noopener noreferrer">
+              View live deployment ↗
+            </a>
+          </article>
+
+          <article className="case">
+            <div className="top">
+              <div>
+                <div className="idline">CASE FILE / 002 / EDTECH PLATFORM</div>
+                <h3>
+                  LearnStudio 2.0<br />Production Learning Platform
+                </h3>
+              </div>
+              <span className="live-stamp">LIVE</span>
+            </div>
+            <p>
+              A ground-up rebuild of an existing learning platform, taken from working prototype to a production system — course delivery, content structure, and the everyday plumbing that keeps an ed-tech product reliable for the people using it.
+            </p>
+            <div className="meta">
+              <div>
+                <strong>Category</strong>Education technology
+              </div>
+              <div>
+                <strong>Built &amp; run by</strong>Shubham Agrawal
+              </div>
+              <div>
+                <strong>Status</strong>In production
+              </div>
+            </div>
+            <a className="case-link" href="https://learn-studio-2-0.vercel.app/" target="_blank" rel="noopener noreferrer">
+              View live deployment ↗
+            </a>
+          </article>
+        </section>
+
+        <footer>
+          <div className="fine">
+            <strong>Imposter World Services</strong> — filed by Shubham Agrawal.<br />
+            No board, no shareholders, no objections raised.
           </div>
-
-          {/* Developer Card */}
-          <div className="bg-[#1e293b]/40 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-50 group-hover:opacity-100 transition-opacity"></div>
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-400">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-              </div>
-              <h2 className="text-2xl font-bold">The Developer</h2>
-            </div>
-            
-            <div className="mb-6">
-              <h3 className="text-xl font-bold text-white mb-1">Shubham Agrawal</h3>
-              <h4 className="text-sm font-medium text-white/70 mb-2">s/o Rakesh Kumar Agrawal</h4>
-              <p className="text-[#F16524] font-medium text-sm">Lead Software Engineer & Architect</p>
-            </div>
-
-            <p className="text-[#8c909f] leading-relaxed mb-8">
-              Specializing in full-stack web development, scalable databases, and modern UI/UX design. Creator of the Electoral Roll Explorer platform.
-            </p>
-
-            <a 
-              href="mailto:rk.coachings20@gmail.com" 
-              className="inline-flex items-center justify-center w-full gap-2 px-6 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white font-medium transition-all hover:scale-[1.02]"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-              Contact the Developer
+          <div className="fine">
+            Verifying authority:{" "}
+            <a href="https://www.linkedin.com/in/shubham-agrawal-856601244" target="_blank" rel="noopener noreferrer">
+              LinkedIn ↗
             </a>
           </div>
-
-        </div>
-
-        {/* Footer */}
-        <div className="mt-20 text-center text-[#8c909f] text-sm font-medium">
-          <p>© {new Date().getFullYear()} Imposter World Services. All rights reserved.</p>
-        </div>
-
+        </footer>
       </div>
     </div>
   );
