@@ -4,7 +4,7 @@
   
   **AI-Powered Electoral Roll Extraction & Secure Next.js Admin Dashboard**
   
-  [![Built by World.s Services](https://img.shields.io/badge/Built_by-World.s_Services-blue?style=for-the-badge)](https://github.com/Shagarwal07)
+  [![Built by Imposter World.s Services](https://img.shields.io/badge/Built_by-Imposter_World.s_Services-blue?style=for-the-badge)](https://github.com/Shagarwal07)
   [![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
   [![Google Cloud](https://img.shields.io/badge/Google_Cloud-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://cloud.google.com/)
   [![Google Gemini](https://img.shields.io/badge/Vertex_AI-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://cloud.google.com/vertex-ai)
@@ -90,6 +90,14 @@ graph TD
     F -->|Next.js Backend| G[Protected API Routes]
     G -->|NextAuth RBAC| H[Next.js Frontend Dashboard]
 ```
+
+---
+
+## ⚖️ Legal & Compliance
+
+**Voter OCR & Search Portal** is an entirely independent, unofficial project. It is **NOT** affiliated with, endorsed by, sponsored by, or associated in any way with the Election Commission of India (ECI), any State Election Commission, or any other government department or agency.
+
+This platform is built and maintained solely by an independent developer (Imposter World Services) to provide an alternative, optimized search interface for publicly available data. The information provided here is strictly on an "as-is" and "as-available" basis for informational purposes only. It must not be used as a substitute for official voter verification. For definitive, legally binding information, please refer to the official Election Commission of India website ([eci.gov.in](https://eci.gov.in/)).
 
 ---
 
