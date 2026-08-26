@@ -177,6 +177,18 @@ export async function GET(request: Request) {
       }
     }
 
+    // Mask voter ID for public and unpaid users
+    if (role !== 'admin' && role !== 'paid') {
+      voters = voters.map((voter: any) => {
+        if (voter.voter_id && voter.voter_id.length > 4) {
+          const v = voter.voter_id;
+          const maskedId = v.substring(0, 3) + '****' + v.substring(v.length - 3);
+          return { ...voter, voter_id: maskedId };
+        }
+        return { ...voter, voter_id: '***' };
+      });
+    }
+
     await db.close();
     return NextResponse.json({ success: true, data: voters });
 
