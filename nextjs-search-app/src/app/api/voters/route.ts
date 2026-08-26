@@ -136,7 +136,8 @@ export async function GET(request: Request) {
       const isPublic = role !== 'admin' && role !== 'paid';
 
       if (type === 'voter_id') {
-        const sqlParam = isPublic ? query : `%${query}%`;
+        const upperQuery = query.toUpperCase();
+        const sqlParam = isPublic ? upperQuery : `%${upperQuery}%`;
         voters = await db.all(`SELECT * FROM voters WHERE voter_id LIKE ? ${wardClause} LIMIT 50`, [sqlParam, ...wardParam]);
       } else if (type === 'house') {
         const sqlParam = isPublic ? query : `%${query}%`;
