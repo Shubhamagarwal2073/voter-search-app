@@ -133,10 +133,14 @@ export async function GET(request: Request) {
     }
 
     if (query) {
+      const isPublic = role !== 'admin' && role !== 'paid';
+
       if (type === 'voter_id') {
-        voters = await db.all(`SELECT * FROM voters WHERE voter_id LIKE ? ${wardClause} LIMIT 50`, [`%${query}%`, ...wardParam]);
+        const sqlParam = isPublic ? query : `%${query}%`;
+        voters = await db.all(`SELECT * FROM voters WHERE voter_id LIKE ? ${wardClause} LIMIT 50`, [sqlParam, ...wardParam]);
       } else if (type === 'house') {
-        voters = await db.all(`SELECT * FROM voters WHERE house_number LIKE ? ${wardClause} LIMIT 50`, [`%${query}%`, ...wardParam]);
+        const sqlParam = isPublic ? query : `%${query}%`;
+        voters = await db.all(`SELECT * FROM voters WHERE house_number LIKE ? ${wardClause} LIMIT 50`, [sqlParam, ...wardParam]);
       } else if (type === 'serial') {
         voters = await db.all(`SELECT * FROM voters WHERE serial_number = ? ${wardClause} LIMIT 50`, [parseInt(query, 10), ...wardParam]);
       } else {
