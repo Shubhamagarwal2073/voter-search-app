@@ -279,9 +279,19 @@ export default function Home() {
                 Sign in with Google
               </button>
             ) : (
-              <div className="inline-block bg-[#E9E1CC] border border-[#1E2A42] p-4 shadow-[2px_2px_0_rgba(30,42,66,1)]">
-                <p className="text-[#1E2A42] font-bold font-['Courier_Prime']">Contact: Admin at RK Coaching Classes</p>
-                <p className="text-sm text-[#4A4536] mt-1">Upgrade your account for unlimited ward access</p>
+              <div className="inline-block bg-[#E9E1CC] border border-[#1E2A42] p-5 shadow-[2px_2px_0_rgba(30,42,66,1)] text-left min-w-[280px]">
+                <p className="text-[#1E2A42] font-bold font-['Courier_Prime'] text-base mb-1">Contact RK Coaching Classes</p>
+                <p className="text-sm text-[#4A4536] mb-4">Upgrade your account for unlimited ward access</p>
+                <div className="flex flex-col gap-2.5 mt-2 border-t border-dashed border-[#1E2A42]/30 pt-3">
+                  <a href="https://share.google/jzpN4bOoeUQk9ZN3V" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between text-[#A2382B] hover:text-[#1E2A42] font-bold font-['Courier_Prime'] text-sm transition-colors group">
+                    <span>Google Reviews</span>
+                    <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                  </a>
+                  <a href="https://www.justdial.com/Balotra/RK-Coaching-Classes-Agarwal-Colony/9999P2982-2982-251007182406-U2B8_BZDET" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between text-[#A2382B] hover:text-[#1E2A42] font-bold font-['Courier_Prime'] text-sm transition-colors group">
+                    <span>JustDial Profile</span>
+                    <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                  </a>
+                </div>
               </div>
             )}
           </section>
