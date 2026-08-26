@@ -58,24 +58,27 @@ export async function GET(request: Request) {
       }
     } else {
       // TIER 1 & 2: PUBLIC and GUESTS - Persistent IP tracking in DB
+      const userAgent = request.headers.get('user-agent') || 'unknown_ua';
+      const clientIdentifier = `${ip}|${userAgent}`;
+
       const authDb = await open({ filename: authDbPath, driver: sqlite3.Database });
       await authDb.run('CREATE TABLE IF NOT EXISTS public_limits (ip TEXT PRIMARY KEY, search_count INTEGER, last_reset INTEGER)');
 
-      const ipRecord = await authDb.get('SELECT * FROM public_limits WHERE ip = ?', [ip]);
+      const ipRecord = await authDb.get('SELECT * FROM public_limits WHERE ip = ?', [clientIdentifier]);
 
       let currentCount = 0;
       if (ipRecord) {
         if (now > ipRecord.last_reset + windowMs24h) {
           // Reset after 24h
-          await authDb.run('UPDATE public_limits SET search_count = 0, last_reset = ? WHERE ip = ?', [now, ip]);
+          await authDb.run('UPDATE public_limits SET search_count = 0, last_reset = ? WHERE ip = ?', [now, clientIdentifier]);
         } else {
           currentCount = ipRecord.search_count;
         }
       } else {
-        await authDb.run('INSERT INTO public_limits (ip, search_count, last_reset) VALUES (?, 0, ?)', [ip, now]);
+        await authDb.run('INSERT INTO public_limits (ip, search_count, last_reset) VALUES (?, 0, ?)', [clientIdentifier, now]);
       }
 
-      console.log(`[RateLimit] Role: ${role}, IP: ${ip}, CurrentCount: ${currentCount}`);
+      console.log(`[RateLimit] Role: ${role}, Client: ${clientIdentifier}, CurrentCount: ${currentCount}`);
 
       const limit = role === 'guest' ? 4 : 2; // Public gets 2, Guests get 2 MORE (4 total per IP)
 
@@ -87,7 +90,7 @@ export async function GET(request: Request) {
           return NextResponse.json({ success: false, error: 'Daily search limit exceeded.', code }, { status: 429 });
         }
         try {
-          await authDb.run('UPDATE public_limits SET search_count = search_count + 1 WHERE ip = ?', [ip]);
+          await authDb.run('UPDATE public_limits SET search_count = search_count + 1 WHERE ip = ?', [clientIdentifier]);
         } catch (dbErr) {
           console.error("Failed to update rate limit (locked). Ignoring.", dbErr);
         }
