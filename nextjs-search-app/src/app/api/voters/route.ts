@@ -62,40 +62,44 @@ export async function GET(request: Request) {
       const clientIdentifier = `${ip}|${userAgent}`;
 
       const authDb = await open({ filename: authDbPath, driver: sqlite3.Database });
-      await authDb.run('CREATE TABLE IF NOT EXISTS public_limits (ip TEXT PRIMARY KEY, search_count INTEGER, last_reset INTEGER)');
+      try {
+        await authDb.exec('PRAGMA journal_mode = WAL;');
+        await authDb.exec('PRAGMA synchronous = NORMAL;');
+        await authDb.run('CREATE TABLE IF NOT EXISTS public_limits (ip TEXT PRIMARY KEY, search_count INTEGER, last_reset INTEGER)');
 
-      const ipRecord = await authDb.get('SELECT * FROM public_limits WHERE ip = ?', [clientIdentifier]);
+        const ipRecord = await authDb.get('SELECT * FROM public_limits WHERE ip = ?', [clientIdentifier]);
 
-      let currentCount = 0;
-      if (ipRecord) {
-        if (now > ipRecord.last_reset + windowMs24h) {
-          // Reset after 24h
-          await authDb.run('UPDATE public_limits SET search_count = 0, last_reset = ? WHERE ip = ?', [now, clientIdentifier]);
+        let currentCount = 0;
+        if (ipRecord) {
+          if (now > ipRecord.last_reset + windowMs24h) {
+            // Reset after 24h
+            await authDb.run('UPDATE public_limits SET search_count = 0, last_reset = ? WHERE ip = ?', [now, clientIdentifier]);
+          } else {
+            currentCount = ipRecord.search_count;
+          }
         } else {
-          currentCount = ipRecord.search_count;
+          await authDb.run('INSERT INTO public_limits (ip, search_count, last_reset) VALUES (?, 0, ?)', [clientIdentifier, now]);
         }
-      } else {
-        await authDb.run('INSERT INTO public_limits (ip, search_count, last_reset) VALUES (?, 0, ?)', [clientIdentifier, now]);
+
+        console.log(`[RateLimit] Role: ${role}, Client: ${clientIdentifier}, CurrentCount: ${currentCount}`);
+
+        const limit = role === 'guest' ? 4 : 2; // Public gets 2, Guests get 2 MORE (4 total per IP)
+
+        // If there is an actual search query (not just initial load), increment and check limit
+        if (query || ward) {
+          if (currentCount >= limit) {
+            const code = role === 'guest' ? 'QUOTA_EXCEEDED_GUEST' : 'QUOTA_EXCEEDED_PUBLIC';
+            return NextResponse.json({ success: false, error: 'Daily search limit exceeded.', code }, { status: 429 });
+          }
+          try {
+            await authDb.run('UPDATE public_limits SET search_count = search_count + 1 WHERE ip = ?', [clientIdentifier]);
+          } catch (dbErr) {
+            console.error("Failed to update rate limit (locked). Ignoring.", dbErr);
+          }
+        }
+      } finally {
+        await authDb.close();
       }
-
-      console.log(`[RateLimit] Role: ${role}, Client: ${clientIdentifier}, CurrentCount: ${currentCount}`);
-
-      const limit = role === 'guest' ? 4 : 2; // Public gets 2, Guests get 2 MORE (4 total per IP)
-
-      // If there is an actual search query (not just initial load), increment and check limit
-      if (query || ward) {
-        if (currentCount >= limit) {
-          await authDb.close();
-          const code = role === 'guest' ? 'QUOTA_EXCEEDED_GUEST' : 'QUOTA_EXCEEDED_PUBLIC';
-          return NextResponse.json({ success: false, error: 'Daily search limit exceeded.', code }, { status: 429 });
-        }
-        try {
-          await authDb.run('UPDATE public_limits SET search_count = search_count + 1 WHERE ip = ?', [clientIdentifier]);
-        } catch (dbErr) {
-          console.error("Failed to update rate limit (locked). Ignoring.", dbErr);
-        }
-      }
-      await authDb.close();
     }
     // --- END RATE LIMITING ---
 
@@ -121,84 +125,87 @@ export async function GET(request: Request) {
       driver: sqlite3.Database
     });
 
-    let voters = [];
+    try {
+      let voters = [];
 
-    // Build ward clause
-    let wardClause = '';
-    let wardParam: any[] = [];
+      // Build ward clause
+      let wardClause = '';
+      let wardParam: any[] = [];
 
-    if (ward) {
-      wardClause = `AND ward = ?`;
-      wardParam = [parseInt(ward, 10)];
-    } else if (allowedArr.length > 0) {
-      wardClause = `AND ward IN (${allowedArr.map(() => '?').join(',')})`;
-      wardParam = allowedArr;
-    }
-
-    if (query) {
-      const isPublic = role !== 'admin' && role !== 'paid';
-
-      if (type === 'voter_id') {
-        const upperQuery = query.toUpperCase();
-        const sqlParam = isPublic ? upperQuery : `%${upperQuery}%`;
-        voters = await db.all(`SELECT * FROM voters WHERE voter_id LIKE ? ${wardClause} LIMIT 50`, [sqlParam, ...wardParam]);
-      } else if (type === 'house') {
-        const sqlParam = isPublic ? query : `%${query}%`;
-        voters = await db.all(`SELECT * FROM voters WHERE house_number LIKE ? ${wardClause} LIMIT 50`, [sqlParam, ...wardParam]);
-      } else if (type === 'serial') {
-        voters = await db.all(`SELECT * FROM voters WHERE serial_number = ? ${wardClause} LIMIT 50`, [parseInt(query, 10), ...wardParam]);
-      } else {
-        // --- HYBRID SEARCH FOR NAMES ---
-        // 1. First, try an EXACT substring match (fastest and most accurate)
-        const exactQuery = `%${query}%`;
-        const exactSql = `SELECT * FROM voters WHERE (name_hi LIKE ? OR relative_name_hi LIKE ?) ${wardClause} LIMIT 50`;
-        const exactResults = await db.all(exactSql, [exactQuery, exactQuery, ...wardParam]);
-
-        if (exactResults.length > 0) {
-          // If we found exact matches (e.g. they typed the name perfectly), return them!
-          voters = exactResults;
-        } else {
-          // 2. If ZERO exact matches found, they probably made a spelling/matra mistake. 
-          // Fall back to a strict fuzzy search!
-          const allVotersQuery = `SELECT * FROM voters ${wardClause ? 'WHERE ' + wardClause.replace('AND ', '') : ''}`;
-          const allVotersForWard = await db.all(allVotersQuery, wardParam);
-
-          const Fuse = (await import('fuse.js')).default;
-          const fuse = new Fuse(allVotersForWard, {
-            keys: ['name_hi', 'relative_name_hi'],
-            threshold: 0.2, // Strict threshold to prevent random matches
-            ignoreLocation: true,
-          });
-
-          const fuzzyResults = fuse.search(query);
-          voters = fuzzyResults.map(result => result.item).slice(0, 50);
-        }
-      }
-    } else {
-      // If no query, just return a few recent ones, respecting ward
       if (ward) {
-        voters = await db.all(`SELECT * FROM voters WHERE ward = ? LIMIT 10`, [parseInt(ward, 10)]);
+        wardClause = `AND ward = ?`;
+        wardParam = [parseInt(ward, 10)];
       } else if (allowedArr.length > 0) {
-        voters = await db.all(`SELECT * FROM voters WHERE ward IN (${allowedArr.map(() => '?').join(',')}) LIMIT 10`, allowedArr);
-      } else {
-        voters = await db.all(`SELECT * FROM voters LIMIT 10`);
+        wardClause = `AND ward IN (${allowedArr.map(() => '?').join(',')})`;
+        wardParam = allowedArr;
       }
-    }
 
-    // Mask voter ID for public and unpaid users
-    if (role !== 'admin' && role !== 'paid') {
-      voters = voters.map((voter: any) => {
-        if (voter.voter_id && voter.voter_id.length > 4) {
-          const v = voter.voter_id;
-          const maskedId = v.substring(0, 3) + '****' + v.substring(v.length - 3);
-          return { ...voter, voter_id: maskedId };
+      if (query) {
+        const isPublic = role !== 'admin' && role !== 'paid';
+
+        if (type === 'voter_id') {
+          const upperQuery = query.toUpperCase();
+          const sqlParam = isPublic ? upperQuery : `%${upperQuery}%`;
+          voters = await db.all(`SELECT * FROM voters WHERE voter_id LIKE ? ${wardClause} LIMIT 50`, [sqlParam, ...wardParam]);
+        } else if (type === 'house') {
+          const sqlParam = isPublic ? query : `%${query}%`;
+          voters = await db.all(`SELECT * FROM voters WHERE house_number LIKE ? ${wardClause} LIMIT 50`, [sqlParam, ...wardParam]);
+        } else if (type === 'serial') {
+          voters = await db.all(`SELECT * FROM voters WHERE serial_number = ? ${wardClause} LIMIT 50`, [parseInt(query, 10), ...wardParam]);
+        } else {
+          // --- HYBRID SEARCH FOR NAMES ---
+          // 1. First, try an EXACT substring match (fastest and most accurate)
+          const exactQuery = `%${query}%`;
+          const exactSql = `SELECT * FROM voters WHERE (name_hi LIKE ? OR relative_name_hi LIKE ?) ${wardClause} LIMIT 50`;
+          const exactResults = await db.all(exactSql, [exactQuery, exactQuery, ...wardParam]);
+
+          if (exactResults.length > 0) {
+            // If we found exact matches (e.g. they typed the name perfectly), return them!
+            voters = exactResults;
+          } else {
+            // 2. If ZERO exact matches found, they probably made a spelling/matra mistake. 
+            // Fall back to a strict fuzzy search!
+            const allVotersQuery = `SELECT * FROM voters ${wardClause ? 'WHERE ' + wardClause.replace('AND ', '') : ''}`;
+            const allVotersForWard = await db.all(allVotersQuery, wardParam);
+
+            const Fuse = (await import('fuse.js')).default;
+            const fuse = new Fuse(allVotersForWard, {
+              keys: ['name_hi', 'relative_name_hi'],
+              threshold: 0.2, // Strict threshold to prevent random matches
+              ignoreLocation: true,
+            });
+
+            const fuzzyResults = fuse.search(query);
+            voters = fuzzyResults.map(result => result.item).slice(0, 50);
+          }
         }
-        return { ...voter, voter_id: '***' };
-      });
-    }
+      } else {
+        // If no query, just return a few recent ones, respecting ward
+        if (ward) {
+          voters = await db.all(`SELECT * FROM voters WHERE ward = ? LIMIT 10`, [parseInt(ward, 10)]);
+        } else if (allowedArr.length > 0) {
+          voters = await db.all(`SELECT * FROM voters WHERE ward IN (${allowedArr.map(() => '?').join(',')}) LIMIT 10`, allowedArr);
+        } else {
+          voters = await db.all(`SELECT * FROM voters LIMIT 10`);
+        }
+      }
 
-    await db.close();
-    return NextResponse.json({ success: true, data: voters });
+      // Mask voter ID for public and unpaid users
+      if (role !== 'admin' && role !== 'paid') {
+        voters = voters.map((voter: any) => {
+          if (voter.voter_id && voter.voter_id.length > 4) {
+            const v = voter.voter_id;
+            const maskedId = v.substring(0, 3) + '****' + v.substring(v.length - 3);
+            return { ...voter, voter_id: maskedId };
+          }
+          return { ...voter, voter_id: '***' };
+        });
+      }
+
+      return NextResponse.json({ success: true, data: voters });
+    } finally {
+      await db.close();
+    }
 
   } catch (error: any) {
     console.error('Database error:', error);
