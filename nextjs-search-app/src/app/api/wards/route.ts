@@ -19,22 +19,25 @@ export async function GET() {
       driver: sqlite3.Database
     });
 
-    const wards = await db.all('SELECT DISTINCT ward FROM voters WHERE ward IS NOT NULL ORDER BY ward ASC');
-    const countRow = await db.get('SELECT COUNT(*) as total FROM voters');
-    await db.close();
-
-    let wardNumbers = wards.map(w => w.ward);
-    
-    // Filter wards based on user's allowed_wards
-    if (session && session.user) {
-      const allowed = (session.user as any).allowed_wards;
-      if (allowed && allowed !== 'all') {
-        const allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
-        wardNumbers = wardNumbers.filter(w => allowedArr.includes(w));
+    try {
+      const wards = await db.all('SELECT DISTINCT ward FROM voters WHERE ward IS NOT NULL ORDER BY ward ASC');
+      const countRow = await db.get('SELECT COUNT(*) as total FROM voters');
+      
+      let wardNumbers = wards.map(w => w.ward);
+      
+      // Filter wards based on user's allowed_wards
+      if (session && session.user) {
+        const allowed = (session.user as any).allowed_wards;
+        if (allowed && allowed !== 'all') {
+          const allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
+          wardNumbers = wardNumbers.filter(w => allowedArr.includes(w));
+        }
       }
-    }
 
-    return NextResponse.json({ success: true, data: wardNumbers, totalVoters: countRow.total });
+      return NextResponse.json({ success: true, data: wardNumbers, totalVoters: countRow.total });
+    } finally {
+      await db.close();
+    }
 
   } catch (error: any) {
     console.error('Database error:', error);
