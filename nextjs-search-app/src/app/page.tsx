@@ -19,6 +19,18 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const [quotaError, setQuotaError] = useState<{ message: string, code: string } | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [showOath, setShowOath] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem('voterOathAccepted')) {
+      setShowOath(true);
+    }
+  }, []);
+
+  const acceptOath = () => {
+    localStorage.setItem('voterOathAccepted', 'true');
+    setShowOath(false);
+  };
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -147,9 +159,73 @@ export default function Home() {
 
         {/* Header */}
         <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 md:mb-12 border-b-[3px] border-double border-[#1E2A42] pb-6">
-          <div>
-            <h1 className="text-2xl md:text-4xl font-black text-[#1E2A42] font-['Fraunces'] tracking-tight">Electoral Roll Explorer</h1>
-            <p className="text-[#4A4536] mt-1 md:mt-2 text-sm md:text-base font-['Courier_Prime'] tracking-widest uppercase">Unofficial Secure Voter Lookup Portal</p>
+          <div className="relative inline-block pr-32 md:pr-48">
+            <h1 className="text-2xl md:text-4xl font-black text-[#1E2A42] font-['Fraunces'] tracking-tight inline-block relative">
+              Electoral Roll Explorer
+              
+              {/* Red Unofficial Seal */}
+              <svg className="w-16 h-16 md:w-[84px] md:h-[84px] absolute -top-4 -right-16 md:-top-6 md:-right-[84px] opacity-90 mix-blend-multiply rotate-[-12deg] z-10" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <filter id="rough-seal">
+                    <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" result="n" />
+                    <feDisplacementMap in="SourceGraphic" in2="n" scale="4" />
+                  </filter>
+                  <path id="seal-ringtop" d="M 30,100 A 70,70 0 0 1 170,100" />
+                  <path id="seal-ringbot" d="M 170,100 A 70,70 0 0 1 30,100" />
+                </defs>
+                <g filter="url(#rough-seal)" fill="none" stroke="#A2382B" strokeWidth="3.5">
+                  <circle cx="100" cy="100" r="92" />
+                  <circle cx="100" cy="100" r="80" />
+                </g>
+                <g filter="url(#rough-seal)" fill="#A2382B" fontFamily="Courier Prime, monospace" fontSize="13" letterSpacing="3">
+                  <text>
+                    <textPath href="#seal-ringtop" startOffset="50%" textAnchor="middle">
+                      UNOFFICIAL PORTAL
+                    </textPath>
+                  </text>
+                  <text>
+                    <textPath href="#seal-ringbot" startOffset="50%" textAnchor="middle">
+                      UNVERIFIED DATA
+                    </textPath>
+                  </text>
+                </g>
+                <g filter="url(#rough-seal)" fill="#A2382B" textAnchor="middle" fontFamily="Fraunces, serif">
+                  <text x="100" y="106" fontSize="22" fontWeight="800">UNOFFICIAL</text>
+                </g>
+              </svg>
+
+              {/* Green Automate Seal */}
+              <svg className="w-14 h-14 md:w-[72px] md:h-[72px] absolute -bottom-2 -right-[120px] md:-bottom-2 md:-right-[160px] opacity-85 mix-blend-multiply rotate-[18deg] z-0" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <filter id="rough-seal-green">
+                    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="n" />
+                    <feDisplacementMap in="SourceGraphic" in2="n" scale="3" />
+                  </filter>
+                  <path id="seal-ringtop-green" d="M 35,100 A 65,65 0 0 1 165,100" />
+                  <path id="seal-ringbot-green" d="M 165,100 A 65,65 0 0 1 35,100" />
+                </defs>
+                <g filter="url(#rough-seal-green)" fill="none" stroke="#2F5B36" strokeWidth="3">
+                  <circle cx="100" cy="100" r="88" />
+                  <circle cx="100" cy="100" r="76" />
+                </g>
+                <g filter="url(#rough-seal-green)" fill="#2F5B36" fontFamily="Courier Prime, monospace" fontSize="12" letterSpacing="2">
+                  <text>
+                    <textPath href="#seal-ringtop-green" startOffset="50%" textAnchor="middle">
+                      BUILT FOR HELP
+                    </textPath>
+                  </text>
+                  <text>
+                    <textPath href="#seal-ringbot-green" startOffset="50%" textAnchor="middle">
+                      AUTOMATE TASK
+                    </textPath>
+                  </text>
+                </g>
+                <g filter="url(#rough-seal-green)" fill="#2F5B36" textAnchor="middle" fontFamily="Fraunces, serif">
+                  <text x="100" y="105" fontSize="20" fontWeight="800">AUTOMATE</text>
+                </g>
+              </svg>
+            </h1>
+            <p className="text-[#4A4536] mt-1 md:mt-2 text-sm md:text-base font-['Courier_Prime'] tracking-widest uppercase relative z-20">Unofficial Voter Lookup Portal Balotra</p>
           </div>
           <div className="flex gap-3 items-center self-start md:self-auto font-['Courier_Prime']">
             <button
@@ -407,6 +483,30 @@ export default function Home() {
         )}
       </main>
 
+      {showOath && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#24211A]/80 backdrop-blur-sm p-4">
+          <div className="bg-[#E9E1CC] border-4 border-double border-[#1E2A42] max-w-md w-full p-6 shadow-[8px_8px_0_rgba(30,42,66,1)] relative">
+            <h2 className="text-2xl font-['Fraunces'] font-black text-[#1E2A42] mb-3 flex items-center gap-2">
+              <span className="text-[#A2382B]">⚠</span> उपयोगकर्ता शपथ
+            </h2>
+            <div className="font-['Courier_Prime'] text-sm text-[#4A4536] space-y-4 mb-6 leading-relaxed">
+              <p>
+                इस अनौपचारिक पोर्टल में प्रवेश करके, मैं सत्यनिष्ठा से शपथ लेता हूँ कि मैं इस खोज उपकरण का उपयोग <strong>जिम्मेदारी और कानूनी रूप से</strong> करूंगा।
+              </p>
+              <p>
+                मैं पुष्टि करता हूँ कि मैं इस उपकरण का उपयोग मुख्य रूप से <strong>अपना नाम खोजने या दूसरों को उनके वैध मतदान विवरण खोजने में सहायता करने</strong> के लिए करूंगा। मैं किसी भी दुर्भावनापूर्ण या व्यावसायिक उद्देश्य के लिए इस सार्वजनिक डेटा का दुरुपयोग या शोषण नहीं करूंगा।
+              </p>
+            </div>
+            <button
+              onClick={acceptOath}
+              className="w-full py-3 bg-[#1E2A42] text-[#E9E1CC] font-['Courier_Prime'] font-bold text-sm tracking-widest hover:bg-[#A2382B] transition-colors border-2 border-[#1E2A42] shadow-[2px_2px_0_rgba(107,105,68,1)] uppercase"
+            >
+              मैं सहमत हूँ
+            </button>
+          </div>
+        </div>
+      )}
+
       <footer className="relative z-20 mt-16 pb-8 pt-8 flex flex-col items-center justify-center gap-4 text-[#4A4536] text-sm border-t-[3px] border-double border-[#1E2A42] font-['Courier_Prime'] max-w-6xl mx-auto w-full">
         <p className="uppercase tracking-widest font-bold">© 2026 Voter_Scrapper (Election)</p>
         <div className="flex items-center gap-4 text-xs font-bold tracking-widest uppercase">
@@ -414,7 +514,7 @@ export default function Home() {
             Imposter World Services
           </a>
           <span className="text-[#B7A97E]">|</span>
-          <a href="/about" className="text-[#1E2A42] hover:text-[#A2382B] transition-colors border-b-[1.5px] border-[#1E2A42] hover:border-[#A2382B] pb-[2px]">
+          <a href="/legal" className="text-[#1E2A42] hover:text-[#A2382B] transition-colors border-b-[1.5px] border-[#1E2A42] hover:border-[#A2382B] pb-[2px]">
             Legal & Notices
           </a>
         </div>

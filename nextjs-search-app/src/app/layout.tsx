@@ -22,8 +22,8 @@ export const metadata: Metadata = {
     type: "website",
   },
   icons: {
-    icon: "/mascot_transparent.png",
-    apple: "/mascot_transparent.png",
+    icon: "/favicon.svg",
+    apple: "/favicon.svg",
   }
 };
 
