@@ -4,9 +4,11 @@ import { ReactTransliterate } from 'react-transliterate';
 import 'react-transliterate/dist/index.css';
 import DatabaseStatsModal from '@/components/DatabaseStatsModal';
 import { useSession, signOut } from "next-auth/react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function Home() {
   const { data: session } = useSession();
+  const { language, toggleLanguage, t } = useLanguage();
   const [query, setQuery] = useState('');
   const [searchType, setSearchType] = useState('voter_id');
   const [ward, setWard] = useState('');
@@ -193,48 +195,36 @@ export default function Home() {
                   <text x="100" y="106" fontSize="22" fontWeight="800">UNOFFICIAL</text>
                 </g>
               </svg>
-
-              {/* Green Automate Seal */}
-              <svg className="w-14 h-14 md:w-[72px] md:h-[72px] absolute -bottom-2 -right-[120px] md:-bottom-2 md:-right-[160px] opacity-85 mix-blend-multiply rotate-[18deg] z-0" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <filter id="rough-seal-green">
-                    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="n" />
-                    <feDisplacementMap in="SourceGraphic" in2="n" scale="3" />
-                  </filter>
-                  <path id="seal-ringtop-green" d="M 35,100 A 65,65 0 0 1 165,100" />
-                  <path id="seal-ringbot-green" d="M 165,100 A 65,65 0 0 1 35,100" />
-                </defs>
-                <g filter="url(#rough-seal-green)" fill="none" stroke="#2F5B36" strokeWidth="3">
-                  <circle cx="100" cy="100" r="88" />
-                  <circle cx="100" cy="100" r="76" />
-                </g>
-                <g filter="url(#rough-seal-green)" fill="#2F5B36" fontFamily="Courier Prime, monospace" fontSize="12" letterSpacing="2">
-                  <text>
-                    <textPath href="#seal-ringtop-green" startOffset="50%" textAnchor="middle">
-                      BUILT FOR HELP
-                    </textPath>
-                  </text>
-                  <text>
-                    <textPath href="#seal-ringbot-green" startOffset="50%" textAnchor="middle">
-                      AUTOMATE TASK
-                    </textPath>
-                  </text>
-                </g>
-                <g filter="url(#rough-seal-green)" fill="#2F5B36" textAnchor="middle" fontFamily="Fraunces, serif">
-                  <text x="100" y="105" fontSize="20" fontWeight="800">AUTOMATE</text>
-                </g>
-              </svg>
             </h1>
             <p className="text-[#4A4536] mt-1 md:mt-2 text-sm md:text-base font-['Courier_Prime'] tracking-widest uppercase relative z-20">Unofficial Voter Lookup Portal Balotra</p>
-          </div>
-          <div className="flex gap-3 items-center self-start md:self-auto font-['Courier_Prime']">
+            
+            {/* LIVE Stats Button (Replacing Green Seal Position) */}
             <button
               onClick={() => setShowStatsModal(true)}
-              className="px-4 py-2 bg-[#E1D7BC] border border-[#1E2A42] text-[#1E2A42] text-xs md:text-sm font-bold flex items-center gap-2 shadow-[2px_2px_0_rgba(30,42,66,1)] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-[1px_1px_0_rgba(30,42,66,1)] transition-all uppercase tracking-wider"
+              className="absolute bottom-0 right-4 md:right-10 z-30 px-3 py-1.5 bg-[#E1D7BC] border-[2.5px] border-[#1E2A42] text-[#1E2A42] text-xs font-bold flex items-center gap-2 shadow-[3px_3px_0_rgba(30,42,66,1)] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-[2px_2px_0_rgba(30,42,66,1)] transition-all uppercase tracking-wider -rotate-[4deg]"
             >
-              <span className="w-2 h-2 rounded-full bg-[#A2382B] animate-pulse"></span>
-              Live Database {totalVoters > 0 && <span className="opacity-80 ml-1">({totalVoters.toLocaleString()} Records)</span>}
+              <span className="w-2.5 h-2.5 rounded-full bg-[#A2382B] animate-pulse"></span>
+              LIVE
             </button>
+          </div>
+          <div className="flex flex-wrap gap-3 items-center self-start md:self-auto font-['Courier_Prime']">
+            <a
+              href="http://localhost:3001"
+              className="px-4 py-2 bg-[#1E2A42] border border-[#1E2A42] text-[#E9E1CC] text-xs md:text-sm font-bold flex items-center gap-2 shadow-[2px_2px_0_rgba(30,42,66,1)] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-[1px_1px_0_rgba(30,42,66,1)] transition-all uppercase tracking-wider"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+              {t("Home Portal", "होम पोर्टल")}
+            </a>
+            {/* Brutalist Language Toggle Switch */}
+            <div
+              onClick={toggleLanguage}
+              className="flex items-center cursor-pointer border-[2px] border-[#1E2A42] bg-white shadow-[2px_2px_0_rgba(30,42,66,1)] rounded-full p-1 w-[72px] h-9 relative transition-all hover:-translate-y-[1px] hover:shadow-[3px_3px_0_rgba(30,42,66,1)] active:translate-y-0 active:shadow-none shrink-0"
+              title="Toggle English / Hindi"
+            >
+              <div className={`absolute top-1 bottom-1 w-7 bg-[#A2382B] rounded-full transition-all duration-300 shadow-inner ${language === 'en' ? 'left-1' : 'left-[34px]'}`}></div>
+              <span className={`flex-1 text-center font-['Courier_Prime'] font-bold text-[10px] z-10 transition-colors duration-300 ${language === 'en' ? 'text-white' : 'text-[#1E2A42]'}`}>EN</span>
+              <span className={`flex-1 text-center font-['Courier_Prime'] font-bold text-[10px] z-10 transition-colors duration-300 ${language === 'hi' ? 'text-white' : 'text-[#1E2A42]'}`}>HI</span>
+            </div>
             {session ? (
               <button
                 onClick={() => signOut()}
@@ -271,7 +261,7 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </div>
-                  {searchType === 'name' ? (
+                  {searchType === 'name' || searchType === 'relative_name' ? (
                     <ReactTransliterate
                       value={query}
                       onChangeText={(text) => setQuery(text)}
@@ -305,7 +295,8 @@ export default function Home() {
                   className="w-full bg-[#E9E1CC] border border-[#1E2A42] py-3 px-4 text-[#1E2A42] focus:outline-none focus:ring-1 focus:ring-[#A2382B] transition-all appearance-none text-sm shadow-inner rounded-none cursor-pointer"
                 >
                   <option value="voter_id">Voter ID</option>
-                  <option value="name">Name / Relative (Login)</option>
+                  <option value="name">Name (Login)</option>
+                  <option value="relative_name">Father's Name (Login)</option>
                   <option value="house">House Number (Login)</option>
                   <option value="serial">Serial Number (Login)</option>
                 </select>
@@ -507,16 +498,48 @@ export default function Home() {
         </div>
       )}
 
-      <footer className="relative z-20 mt-16 pb-8 pt-8 flex flex-col items-center justify-center gap-4 text-[#4A4536] text-sm border-t-[3px] border-double border-[#1E2A42] font-['Courier_Prime'] max-w-6xl mx-auto w-full">
-        <p className="uppercase tracking-widest font-bold">© 2026 Voter_Scrapper (Election)</p>
-        <div className="flex items-center gap-4 text-xs font-bold tracking-widest uppercase">
-          <a href="/about" className="text-[#1E2A42] hover:text-[#A2382B] transition-colors border-b-[1.5px] border-[#1E2A42] hover:border-[#A2382B] pb-[2px]">
-            Imposter World Services
-          </a>
-          <span className="text-[#B7A97E]">|</span>
-          <a href="/legal" className="text-[#1E2A42] hover:text-[#A2382B] transition-colors border-b-[1.5px] border-[#1E2A42] hover:border-[#A2382B] pb-[2px]">
-            Legal & Notices
-          </a>
+      <footer className="relative z-20 mt-16 pt-8 pb-8 flex flex-col items-center justify-center gap-6 text-[#4A4536] text-sm border-t-[3px] border-[#1E2A42] font-['Courier_Prime'] max-w-6xl mx-auto w-full px-4 md:px-8">
+        <div className="flex flex-col md:flex-row justify-between w-full gap-8 border-b-2 border-dashed border-[#1E2A42]/30 pb-8">
+          
+          {/* Creator Info */}
+          <div className="flex-[2] max-w-2xl">
+            <div className="inline-block bg-[#1E2A42] text-[#E9E1CC] font-bold text-[10px] tracking-widest uppercase px-2 py-1 mb-3">
+              {t("A TECHNICAL INITIATIVE", "एक तकनीकी पहल")}
+            </div>
+            <h3 className="font-['Fraunces'] font-bold text-xl text-[#1E2A42] mb-2">
+              {t("Smart Voter Search Platform", "स्मार्ट वोटर सर्च प्लेटफॉर्म")}
+            </h3>
+            <p className="text-xs md:text-sm font-['Lora'] mb-4 text-[#1E2A42]/80 leading-relaxed">
+              {t("Developed for public convenience by", "आमजन की सुविधा के लिए")} <strong>IWS (Imposter World Services)</strong> & <strong>Shubham Agrawal</strong> <span className="text-[#A2382B]">(S/o Shri Rakesh Ji Agrawal, Booth President, Ward No. 5 - Agrawal Colony)</span>. 
+              {t("This tool aims to eliminate the hassle of finding voter details in massive PDFs, saving valuable time for citizens and volunteers on election day.", "यह टूल भारी-भरकम PDF में वोटर डिटेल्स खोजने की परेशानी को दूर करता है, जिससे चुनाव के दिन स्वयंसेवकों और नागरिकों का काफी समय बचता है।")}
+            </p>
+            <div className="flex flex-wrap gap-4 md:gap-8 text-xs font-bold tracking-widest text-[#1E2A42]">
+              <div>
+                <span className="text-[#A2382B] block mb-0.5 text-[10px]">{t("GENERAL CONTACT", "सामान्य संपर्क")}</span>
+                +91 9414668795
+              </div>
+              <div>
+                <span className="text-[#A2382B] block mb-0.5 text-[10px]">{t("TECHNICAL SUPPORT", "तकनीकी सहायता")}</span>
+                +91 8890106858
+              </div>
+            </div>
+          </div>
+          
+          {/* Links */}
+          <div className="flex-1 flex flex-col items-start md:items-end gap-3 font-bold tracking-widest uppercase text-xs pt-2">
+            <a href="/about" target="_blank" rel="noopener noreferrer" className="text-[#1E2A42] hover:text-[#A2382B] transition-colors border-b border-transparent hover:border-[#A2382B]">
+              About Platform
+            </a>
+            <a href="/legal" target="_blank" rel="noopener noreferrer" className="text-[#1E2A42] hover:text-[#A2382B] transition-colors border-b border-transparent hover:border-[#A2382B]">
+              Legal & Notices
+            </a>
+          </div>
+          
+        </div>
+        
+        <div className="w-full flex justify-between items-center text-[10px] font-bold tracking-widest uppercase text-[#1E2A42]/70">
+          <p>© 2026 Voter_Scrapper</p>
+          <p>ALL RIGHTS RESERVED</p>
         </div>
       </footer>
     </div>
