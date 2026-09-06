@@ -55,17 +55,28 @@ export async function POST(request: Request) {
     if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 });
 
     const db = await getAuthDb();
-    const result = await db.run(
-      `INSERT INTO users (email, role, allowed_wards) VALUES (?, 'paid', ?)`,
-      [email, allowed_wards || '']
-    );
+    
+    // Check if user already exists
+    const existingUser = await db.get(`SELECT id FROM users WHERE email = ?`, [email]);
+    
+    if (existingUser) {
+      // Upgrade existing user to paid
+      await db.run(
+        `UPDATE users SET role = 'paid', allowed_wards = ? WHERE email = ?`,
+        [allowed_wards || '', email]
+      );
+    } else {
+      // Insert new user
+      await db.run(
+        `INSERT INTO users (email, role, allowed_wards) VALUES (?, 'paid', ?)`,
+        [email, allowed_wards || '']
+      );
+    }
+    
     await db.close();
 
-    return NextResponse.json({ success: true, id: result.lastID });
+    return NextResponse.json({ success: true });
   } catch (error: any) {
-    if (error.message.includes('UNIQUE constraint failed')) {
-      return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 });
-    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
