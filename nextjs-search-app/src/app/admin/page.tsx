@@ -18,6 +18,7 @@ export default function AdminDashboard() {
   const [newEmail, setNewEmail] = useState("");
   const [newWards, setNewWards] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -27,9 +28,11 @@ export default function AdminDashboard() {
       // Check if user is admin
       const isAdmin = (session.user as any).role === "admin" || session.user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
       
-      // Even if role isn't explicitly 'admin' in session, if the backend treats them as admin, the API call will succeed.
-      // But we can just fetch the users to see if we have access.
-      fetchUsers();
+      if (!isAdmin) {
+        router.push("/");
+      } else {
+        fetchUsers();
+      }
     }
   }, [status, session, router]);
 
@@ -48,30 +51,39 @@ export default function AdminDashboard() {
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
     try {
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: newEmail, allowed_wards: newWards }),
+        body: JSON.stringify({ 
+          email: newEmail.trim().toLowerCase(), 
+          allowed_wards: newWards.trim() 
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || "Failed to authorize user");
       
       setNewEmail("");
       setNewWards("");
       fetchUsers();
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure?")) return;
+    if (!confirm("Are you sure you want to revoke this user's access?")) return;
+    setError("");
     try {
-      await fetch(`/api/admin/users?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/users?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to revoke user access");
       fetchUsers();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      setError(err.message);
     }
   };
 
@@ -163,10 +175,15 @@ export default function AdminDashboard() {
             
             <button 
               type="submit"
-              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] active:scale-95 transition-all flex items-center justify-center gap-2"
+              disabled={isSubmitting}
+              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-              Authorize
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+              )}
+              {isSubmitting ? 'Authorizing...' : 'Authorize'}
             </button>
           </form>
         </div>
