@@ -20,7 +20,6 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [syncToCloud, setSyncToCloud] = useState(true);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -59,8 +58,7 @@ export default function AdminDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           email: newEmail.trim().toLowerCase(), 
-          allowed_wards: newWards.trim(),
-          syncToCloud
+          allowed_wards: newWards.trim() 
         }),
       });
       const data = await res.json();
@@ -80,7 +78,7 @@ export default function AdminDashboard() {
     if (!confirm("Are you sure you want to revoke this user's access?")) return;
     setError("");
     try {
-      const res = await fetch(`/api/admin/users?id=${id}&syncToCloud=${syncToCloud}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/users?id=${id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to revoke user access");
       fetchUsers();
@@ -175,22 +173,11 @@ export default function AdminDashboard() {
               />
             </div>
             
-            <div className="flex flex-col sm:flex-row items-center gap-4 mt-4 w-full">
-              <label className="flex items-center gap-2 text-sm text-[#8c909f] cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={syncToCloud} 
-                  onChange={(e) => setSyncToCloud(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-2"
-                />
-                Sync to Cloud Backup (Neon DB)
-              </label>
-
-              <button 
-                type="submit"
-                disabled={isSubmitting}
-                className="ml-auto px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
+            <button 
+              type="submit"
+              disabled={isSubmitting}
+              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
               {isSubmitting ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
@@ -198,7 +185,6 @@ export default function AdminDashboard() {
               )}
               {isSubmitting ? 'Authorizing...' : 'Authorize'}
             </button>
-            </div>
           </form>
         </div>
 
