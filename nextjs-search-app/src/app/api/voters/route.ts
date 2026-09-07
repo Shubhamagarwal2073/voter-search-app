@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
     // --- RATE LIMITING LOGIC ---
     // TIER 3: ADMINS & PAID USERS - Unlimited total, but 25 requests per minute to prevent scraping
-    if (role === 'admin' || role === 'paid' || role === 'user' || (session?.user?.email && process.env.ADMIN_EMAIL && session.user.email === process.env.ADMIN_EMAIL)) {
+    if (role === 'admin' || role === 'paid' || (session?.user?.email && process.env.ADMIN_EMAIL && session.user.email === process.env.ADMIN_EMAIL)) {
       const rateLimitData = rateLimitMap.get(ip);
       const windowMs = 60 * 1000; // 1 minute
       if (rateLimitData) {
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
 
         console.log(`[RateLimit] Role: ${role}, Client: ${clientIdentifier}, CurrentCount: ${currentCount}`);
 
-        const limit = role === 'guest' ? 4 : 2; // Public gets 2, Guests get 2 MORE (4 total per IP)
+        const limit = (role === 'guest' || role === 'user') ? 4 : 2; // Public gets 2, Guests get 2 MORE (4 total per IP)
 
         // If there is an actual search query (not just initial load), increment and check limit
         if (query || ward) {
