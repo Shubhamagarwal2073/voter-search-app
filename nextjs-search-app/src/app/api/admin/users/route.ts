@@ -174,11 +174,6 @@ export async function POST(request: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const session: any = await getServerSession(authOptions);
-    if (session?.user?.role !== "admin" && session?.user?.email !== process.env.ADMIN_EMAIL) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     const email = searchParams.get('email'); // for Neon deletion
@@ -188,10 +183,7 @@ export async function DELETE(req: Request) {
     }
 
     // 1. DELETE FROM LOCAL auth.db
-    const db = await open({
-      filename: authDbPath,
-      driver: sqlite3.Database,
-    });
+    const db = await openLocalDb();
     
     await db.run("DELETE FROM users WHERE id = ?", [id]);
     await db.close();
