@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 interface User {
   id: number;
   email: string;
+  name: string;
   role: string;
   allowed_wards: string;
 }
@@ -14,21 +15,30 @@ interface User {
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  
   const [users, setUsers] = useState<User[]>([]);
-  const [newEmail, setNewEmail] = useState("");
-  const [newWards, setNewWards] = useState("");
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  
+  // Form State
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [formName, setFormName] = useState("");
+  const [formEmail, setFormEmail] = useState("");
+  const [formRole, setFormRole] = useState("user");
+  const [formWards, setFormWards] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // App Settings
   const [syncToCloud, setSyncToCloud] = useState(true);
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/api/auth/signin");
     } else if (status === "authenticated") {
-      // Check if user is admin
       const isAdmin = (session.user as any).role === "admin" || session.user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-      
       if (!isAdmin) {
         router.push("/");
       } else {
@@ -42,32 +52,67 @@ export default function AdminDashboard() {
       const res = await fetch("/api/admin/users");
       if (!res.ok) throw new Error("Unauthorized");
       const data = await res.json();
-      setUsers(data.users);
-      setLoading(false);
+      setUsers(data);
     } catch (err) {
-      router.push("/"); // Redirect if unauthorized
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAddUser = async (e: React.FormEvent) => {
+  const openDrawerForNew = () => {
+    setEditingUserId(null);
+    setFormName("");
+    setFormEmail("");
+    setFormRole("user");
+    setFormWards("");
+    setIsDrawerOpen(true);
+  };
+
+  const openDrawerForEdit = (user: User) => {
+    setEditingUserId(user.id);
+    setFormName(user.name || "");
+    setFormEmail(user.email);
+    setFormRole(user.role);
+    setFormWards(user.allowed_wards || "");
+    setIsDrawerOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
     setIsSubmitting(true);
+    
     try {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email: newEmail.trim().toLowerCase(), 
-          allowed_wards: newWards.trim(),
-          syncToCloud
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to authorize user");
+      // POST for new, PUT for edit
+      const method = editingUserId ? "PUT" : "POST";
+      const payload = {
+        id: editingUserId,
+        name: formName.trim(),
+        email: formEmail.trim().toLowerCase(),
+        role: formRole,
+        allowed_wards: formWards.trim(),
+        syncToNeon: syncToCloud
+      };
       
-      setNewEmail("");
-      setNewWards("");
+      const res = await fetch("/api/admin/users", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error || "Failed to save user");
+      
+      if (data.neonFailed) {
+        setError(data.message);
+      } else {
+        setSuccess("User saved successfully!");
+        setIsDrawerOpen(false);
+      }
+      
       fetchUsers();
     } catch (err: any) {
       setError(err.message);
@@ -76,206 +121,267 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to revoke this user's access?")) return;
-    setError("");
-    try {
-      const res = await fetch(`/api/admin/users?id=${id}&syncToCloud=${syncToCloud}`, { method: "DELETE" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to revoke user access");
-      fetchUsers();
-    } catch (err: any) {
-      setError(err.message);
+  const toggleSelectUser = (id: number) => {
+    setSelectedUsers(prev => 
+      prev.includes(id) ? prev.filter(uId => uId !== id) : [...prev, id]
+    );
+  };
+
+  const selectAll = () => {
+    if (selectedUsers.length === users.length) {
+      setSelectedUsers([]);
+    } else {
+      setSelectedUsers(users.map(u => u.id));
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0f172a] text-[#8c909f]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
+  const handleSendWelcomeEmail = async () => {
+    if (selectedUsers.length === 0) {
+      alert("Please select at least one user to email.");
+      return;
+    }
+    
+    if (!confirm(`Are you sure you want to send welcome emails to ${selectedUsers.length} users?`)) return;
+    
+    setError("");
+    setSuccess("Sending emails...");
+    
+    let successCount = 0;
+    
+    for (const id of selectedUsers) {
+      const user = users.find(u => u.id === id);
+      if (!user) continue;
+      
+      try {
+        const res = await fetch("/api/email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email, name: user.name }),
+        });
+        if (res.ok) successCount++;
+      } catch (e) {
+        console.error("Failed to email", user.email);
+      }
+    }
+    
+    setSuccess(`Successfully sent ${successCount} emails!`);
+    setSelectedUsers([]);
+  };
+
+  if (loading) return <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white p-4 md:p-8 relative overflow-hidden">
-      {/* Dynamic Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/10 blur-[100px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/10 blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
-      </div>
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans flex flex-col md:flex-row">
+      
+      {/* Sidebar Navigation */}
+      <nav className="w-full md:w-64 bg-white border-r border-slate-200 flex-shrink-0 p-6 hidden md:block shadow-sm">
+        <div className="flex items-center gap-3 mb-10">
+          <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-xl">
+            AV
+          </div>
+          <div>
+            <h1 className="font-bold text-indigo-900 text-xl tracking-tight">AuthVault</h1>
+            <p className="text-xs text-slate-500 font-medium">Enterprise Admin</p>
+          </div>
+        </div>
+        <ul className="space-y-2">
+          <li>
+            <a href="#" className="flex items-center gap-3 px-4 py-3 bg-indigo-50 text-indigo-700 rounded-lg font-semibold border-l-4 border-indigo-600 shadow-sm transition-all">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              Auth Users
+            </a>
+          </li>
+        </ul>
+        <div className="mt-auto pt-10">
+           <button onClick={() => signOut({ callbackUrl: '/login' })} className="flex items-center gap-2 text-slate-500 hover:text-red-600 px-4 py-2 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+              Sign Out
+           </button>
+        </div>
+      </nav>
 
-      <div className="max-w-5xl mx-auto relative z-10 space-y-8">
+      {/* Main Content Area */}
+      <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8">
         
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#1e293b]/40 backdrop-blur-xl p-6 rounded-2xl border border-white/10 shadow-2xl">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
-                Command Center
-              </h1>
-              <p className="text-[#8c909f] text-sm">Electoral Roll Explorer Administration</p>
-            </div>
+        {/* Header Section */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Authentication Management</h2>
+            <p className="text-slate-500 mt-1">Manage application user identities, roles, and access controls.</p>
           </div>
-          <button 
-            onClick={() => signOut({ callbackUrl: '/api/auth/signin' })}
-            className="flex items-center gap-2 px-5 py-2.5 bg-red-500/10 text-red-400 font-medium rounded-xl border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 transition-all shadow-lg hover:shadow-red-500/20 active:scale-95"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-            Secure Logout
-          </button>
+          <div className="flex gap-3">
+             {selectedUsers.length > 0 && (
+                <button onClick={handleSendWelcomeEmail} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 px-5 rounded-lg shadow-sm shadow-indigo-200 transition-all active:scale-95 font-medium">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                  Send Welcome Email ({selectedUsers.length})
+                </button>
+             )}
+             <button onClick={openDrawerForNew} className="flex items-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-2.5 px-5 rounded-lg shadow-sm transition-all active:scale-95 font-medium">
+               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+               Add User
+             </button>
+          </div>
+        </header>
+
+        {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg flex items-start gap-3 shadow-sm">
+               <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+               <div>{error}</div>
+            </div>
+        )}
+        
+        {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-start gap-3 shadow-sm">
+               <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+               <div>{success}</div>
+            </div>
+        )}
+
+        {/* Sync Feature Card */}
+        <div className="bg-white border border-slate-200 rounded-xl p-6 mb-8 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+             <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600">
+               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+             </div>
+             <div>
+                <h3 className="text-lg font-semibold text-slate-900">Cloud Backup Synchronization</h3>
+                <p className="text-sm text-slate-500 mt-1">Automatically push auth user delta changes to the secure Neon cloud vault.</p>
+             </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer select-none group">
+             <input type="checkbox" checked={syncToCloud} onChange={(e) => setSyncToCloud(e.target.checked)} className="sr-only peer" />
+             <div className={`w-14 h-7 rounded-full transition-colors relative ${syncToCloud ? 'bg-[#00F5FF]' : 'bg-slate-300'}`} style={syncToCloud ? { boxShadow: '0 0 10px #00F5FF, 0 0 20px #00F5FF, inset 0 0 5px #00F5FF', borderColor: '#00F5FF' } : {}}>
+                <div className={`absolute top-[2px] left-[2px] bg-white rounded-full h-6 w-6 transition-transform shadow-md ${syncToCloud ? 'translate-x-7' : 'translate-x-0'}`}></div>
+             </div>
+             <span className="ml-3 text-sm font-semibold text-slate-700">Neon Sync</span>
+          </label>
         </div>
 
-        {/* Add User Section */}
-        <div className="bg-gradient-to-br from-[#1e293b]/60 to-[#0f172a]/60 backdrop-blur-xl p-6 md:p-8 rounded-2xl border border-white/5 shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-50 group-hover:opacity-100 transition-opacity"></div>
-          
-          <h2 className="text-xl font-semibold mb-2 text-white flex items-center gap-2">
-            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-            Authorize Premium Access
-          </h2>
-          <p className="text-[#8c909f] text-sm mb-6">Grant unlimited search capabilities to paying customers. Roles will default to "paid".</p>
-          
-          {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 text-red-400 text-sm">
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleAddUser} className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg className="w-5 h-5 text-[#8c909f]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-              </div>
-              <input
-                type="email"
-                placeholder="Client Google Email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                className="w-full bg-[#0f172a]/80 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white placeholder-[#8c909f] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner"
-                required
-              />
-            </div>
-            
-            <div className="flex-1 relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg className="w-5 h-5 text-[#8c909f]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-              </div>
-              <input
-                type="text"
-                placeholder="Allowed Wards (e.g. 5,10 or 'all')"
-                value={newWards}
-                onChange={(e) => setNewWards(e.target.value)}
-                className="w-full bg-[#0f172a]/80 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white placeholder-[#8c909f] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner"
-                required
-              />
-            </div>
-            
-            <div className="flex flex-col sm:flex-row items-center gap-4 mt-4 w-full">
-              <label className="flex items-center gap-2 text-sm text-[#8c909f] cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={syncToCloud} 
-                  onChange={(e) => setSyncToCloud(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-2"
-                />
-                Sync to Cloud Backup (Neon DB)
-              </label>
-
-              <button 
-                type="submit"
-                disabled={isSubmitting}
-                className="ml-auto px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-              {isSubmitting ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-              )}
-              {isSubmitting ? 'Authorizing...' : 'Authorize'}
-            </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Users Table */}
-        <div className="bg-[#1e293b]/40 backdrop-blur-xl rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
-          <div className="p-6 border-b border-white/5">
-            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-              <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-              Active Subscriptions ({users.length})
-            </h2>
-          </div>
-          
+        {/* Data Table */}
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left whitespace-nowrap">
-              <thead className="bg-[#0f172a]/50 text-[#8c909f] text-xs uppercase tracking-wider">
-                <tr>
-                  <th className="py-4 px-6 font-semibold">User Email</th>
-                  <th className="py-4 px-6 font-semibold">Access Level</th>
-                  <th className="py-4 px-6 font-semibold">Ward Coverage</th>
-                  <th className="py-4 px-6 font-semibold text-right">Management</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {users.map(user => (
-                  <tr key={user.id} className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 flex items-center justify-center text-white text-sm font-bold shadow-inner">
-                          {user.email.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="font-medium text-[#d4e4fa]">{user.email}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
-                        user.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 
-                        user.role === 'paid' || user.role === 'user' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                        'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                      }`}>
-                        {user.role === 'admin' ? <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z" clipRule="evenodd" /></svg> : null}
-                        {user.role.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-2 text-[#8c909f]">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
-                        <span className="font-mono text-sm">{user.allowed_wards || 'All Wards'}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 text-right">
-                      {user.role !== 'admin' && (
-                        <button 
-                          onClick={() => handleDelete(user.id)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 text-sm font-medium rounded-lg transition-all border border-red-500/20"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                          Revoke
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
+               <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-semibold border-b border-slate-200">
                   <tr>
-                    <td colSpan={4} className="py-16 text-center text-[#8c909f]">
-                      <svg className="w-12 h-12 mx-auto mb-4 text-[#8c909f]/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                      <p className="text-lg font-medium">No users found</p>
-                      <p className="text-sm mt-1">Authorize your first user above to grant premium access.</p>
-                    </td>
+                     <th className="py-4 px-6 text-center w-12">
+                       <input type="checkbox" checked={users.length > 0 && selectedUsers.length === users.length} onChange={selectAll} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+                     </th>
+                     <th className="py-4 px-6">User details</th>
+                     <th className="py-4 px-6">Access Role</th>
+                     <th className="py-4 px-6">Ward Coverage</th>
+                     <th className="py-4 px-6 text-right">Actions</th>
                   </tr>
-                )}
-              </tbody>
+               </thead>
+               <tbody className="divide-y divide-slate-100">
+                  {users.map(user => (
+                     <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-4 px-6 text-center">
+                           <input type="checkbox" checked={selectedUsers.includes(user.id)} onChange={() => toggleSelectUser(user.id)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+                        </td>
+                        <td className="py-4 px-6">
+                           <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
+                                 {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                 <div className="font-semibold text-slate-900">{user.name || 'No Name Provided'}</div>
+                                 <div className="text-sm text-slate-500">{user.email}</div>
+                              </div>
+                           </div>
+                        </td>
+                        <td className="py-4 px-6">
+                           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                              user.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : 
+                              user.role === 'paid' ? 'bg-green-50 text-green-700 border-green-200' :
+                              'bg-slate-100 text-slate-600 border-slate-200'
+                           }`}>
+                              {user.role.toUpperCase()}
+                           </span>
+                        </td>
+                        <td className="py-4 px-6 text-slate-600 text-sm font-medium">
+                           {user.allowed_wards || 'All Wards'}
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                           <button onClick={() => openDrawerForEdit(user)} className="text-indigo-600 hover:text-indigo-800 font-medium text-sm border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors">
+                              Edit Access
+                           </button>
+                        </td>
+                     </tr>
+                  ))}
+                  {users.length === 0 && (
+                     <tr>
+                        <td colSpan={5} className="py-12 text-center text-slate-500">No users found.</td>
+                     </tr>
+                  )}
+               </tbody>
             </table>
           </div>
         </div>
-        
-      </div>
+
+      </main>
+
+      {/* Side Panel Form (Drawer) */}
+      {isDrawerOpen && (
+         <div className="fixed inset-0 z-50 flex justify-end">
+            <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)}></div>
+            
+            <div className="w-full max-w-md bg-white h-full shadow-2xl relative transform transition-transform border-l border-slate-200 flex flex-col animate-slide-in-right">
+               <div className="flex items-center justify-between p-6 border-b border-slate-100">
+                  <h3 className="text-xl font-bold text-slate-900">{editingUserId ? 'Edit App User' : 'Add App User'}</h3>
+                  <button onClick={() => setIsDrawerOpen(false)} className="text-slate-400 hover:text-slate-600 p-2">
+                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+               </div>
+               
+               <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+                  <div>
+                     <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name</label>
+                     <input type="text" value={formName} onChange={e => setFormName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="John Doe" />
+                  </div>
+                  
+                  <div>
+                     <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email Address *</label>
+                     <input type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="user@example.com" disabled={!!editingUserId} />
+                     {!!editingUserId && <p className="text-xs text-slate-400 mt-1">Email cannot be changed once set.</p>}
+                  </div>
+                  
+                  <div>
+                     <label className="block text-sm font-semibold text-slate-700 mb-1.5">Access Role</label>
+                     <select value={formRole} onChange={e => setFormRole(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="user">User (Guest)</option>
+                        <option value="paid">Paid Customer</option>
+                        <option value="admin">Administrator</option>
+                     </select>
+                  </div>
+                  
+                  <div>
+                     <label className="block text-sm font-semibold text-slate-700 mb-1.5">Allowed Wards</label>
+                     <input type="text" value={formWards} onChange={e => setFormWards(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. 5,10,31 or 'all'" />
+                     <p className="text-xs text-slate-500 mt-1.5">Leave blank or type 'all' for unlimited access.</p>
+                  </div>
+               </form>
+               
+               <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
+                  <button onClick={() => setIsDrawerOpen(false)} type="button" className="flex-1 bg-white border border-slate-300 text-slate-700 py-2.5 rounded-lg font-medium shadow-sm hover:bg-slate-50 transition-colors">
+                     Cancel
+                  </button>
+                  <button onClick={handleSubmit} disabled={isSubmitting} className="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg font-medium shadow-sm shadow-indigo-200 hover:bg-indigo-700 transition-colors disabled:opacity-50">
+                     {isSubmitting ? 'Saving...' : 'Save User'}
+                  </button>
+               </div>
+            </div>
+         </div>
+      )}
+
+      <style jsx global>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        .animate-slide-in-right {
+          animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
     </div>
   );
 }
