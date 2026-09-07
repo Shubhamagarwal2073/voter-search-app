@@ -29,6 +29,13 @@ export async function GET(request: Request) {
   const query = (searchParams.get('q') || '').trim();
   const type = searchParams.get('type') || 'name'; // 'name', 'voter_id', 'house', 'serial'
   let ward = searchParams.get('ward') || ''; // optional ward filter
+  
+  // Parse pagination params with safe fallbacks and caps
+  let limit = Math.min(Math.max(1, Number(searchParams.get('limit')) || 50), 200);
+  if (!Number.isFinite(limit)) limit = 50;
+  
+  let page = Number(searchParams.get('page')) || 1;
+  if (!Number.isFinite(page) || page < 1) page = 1;
 
   try {
     const session: any = await getServerSession(authOptions);
@@ -139,6 +146,9 @@ export async function GET(request: Request) {
 
     try {
       let voters = [];
+      let totalItems = 0;
+      let totalPages = 1;
+      let currentPage = page;
 
       // Build ward clause
       let wardClause = '';
@@ -151,6 +161,33 @@ export async function GET(request: Request) {
         wardClause = `AND ward IN (${allowedArr.map(() => '?').join(',')})`;
         wardParam = allowedArr;
       }
+      
+      // Helper function to safely slice results and compute metadata
+      const applyFuzzyPagination = (allResults: any[]) => {
+        totalItems = allResults.length;
+        totalPages = Math.max(1, Math.ceil(totalItems / limit));
+        currentPage = Math.min(Math.max(1, page), totalPages);
+        return allResults.slice((currentPage - 1) * limit, currentPage * limit);
+      };
+
+      // Helper function to execute SQL with COUNT(*) in parallel
+      const executePaginatedSql = async (baseQuery: string, countQuery: string, params: any[]) => {
+        const [countResult, dataResult] = await Promise.all([
+          db.get(countQuery, params),
+          db.all(`${baseQuery} LIMIT ? OFFSET ?`, [...params, limit, (Math.max(1, page) - 1) * limit])
+        ]);
+        
+        totalItems = countResult.total || 0;
+        totalPages = Math.max(1, Math.ceil(totalItems / limit));
+        currentPage = Math.min(Math.max(1, page), totalPages);
+        
+        // Re-fetch if the requested page was out of bounds
+        if (page > totalPages) {
+            const safeOffset = (currentPage - 1) * limit;
+            return await db.all(`${baseQuery} LIMIT ? OFFSET ?`, [...params, limit, safeOffset]);
+        }
+        return dataResult;
+      };
 
       if (query) {
         const isPublic = role !== 'admin' && role !== 'paid';
@@ -158,64 +195,60 @@ export async function GET(request: Request) {
         if (type === 'voter_id') {
           const upperQuery = query.toUpperCase();
           const sqlParam = isPublic ? upperQuery : `%${upperQuery}%`;
-          voters = await db.all(`SELECT * FROM voters WHERE voter_id LIKE ? ${wardClause} LIMIT 50`, [sqlParam, ...wardParam]);
+          const baseSql = `SELECT * FROM voters WHERE voter_id LIKE ? ${wardClause}`;
+          const countSql = `SELECT COUNT(*) as total FROM voters WHERE voter_id LIKE ? ${wardClause}`;
+          voters = await executePaginatedSql(baseSql, countSql, [sqlParam, ...wardParam]);
         } else if (type === 'house') {
           const sqlParam = isPublic ? query : `%${query}%`;
-          voters = await db.all(`SELECT * FROM voters WHERE house_number LIKE ? ${wardClause} LIMIT 50`, [sqlParam, ...wardParam]);
+          const baseSql = `SELECT * FROM voters WHERE house_number LIKE ? ${wardClause}`;
+          const countSql = `SELECT COUNT(*) as total FROM voters WHERE house_number LIKE ? ${wardClause}`;
+          voters = await executePaginatedSql(baseSql, countSql, [sqlParam, ...wardParam]);
         } else if (type === 'serial') {
-          voters = await db.all(`SELECT * FROM voters WHERE serial_number = ? ${wardClause} LIMIT 50`, [parseInt(query, 10), ...wardParam]);
-        } else if (type === 'name') {
-          // --- EXACT FIRST, THEN FUZZY ---
+          const baseSql = `SELECT * FROM voters WHERE serial_number = ? ${wardClause}`;
+          const countSql = `SELECT COUNT(*) as total FROM voters WHERE serial_number = ? ${wardClause}`;
+          voters = await executePaginatedSql(baseSql, countSql, [parseInt(query, 10), ...wardParam]);
+        } else if (type === 'name' || type === 'relative_name') {
+          const searchField = type === 'name' ? 'name_hi' : 'relative_name_hi';
           const exactQuery = `%${query}%`;
-          const exactSql = `SELECT * FROM voters WHERE name_hi LIKE ? ${wardClause} LIMIT 50`;
-          const exactResults = await db.all(exactSql, [exactQuery, ...wardParam]);
-
-          if (exactResults.length > 0) {
-            voters = exactResults;
+          const countSql = `SELECT COUNT(*) as total FROM voters WHERE ${searchField} LIKE ? ${wardClause}`;
+          const exactCountResult = await db.get(countSql, [exactQuery, ...wardParam]);
+          
+          if (exactCountResult.total > 0) {
+            const baseSql = `SELECT * FROM voters WHERE ${searchField} LIKE ? ${wardClause}`;
+            voters = await executePaginatedSql(baseSql, countSql, [exactQuery, ...wardParam]);
           } else {
             const allVotersQuery = `SELECT * FROM voters ${wardClause ? 'WHERE ' + wardClause.replace('AND ', '') : ''}`;
             const allVotersForWard = await db.all(allVotersQuery, wardParam);
 
             const Fuse = (await import('fuse.js')).default;
             const fuse = new Fuse(allVotersForWard, {
-              keys: ['name_hi'],
+              keys: [searchField],
               threshold: 0.2, // Strict threshold
               ignoreLocation: true,
             });
 
-            voters = fuse.search(query).map(result => result.item).slice(0, 50);
-          }
-        } else if (type === 'relative_name') {
-          // --- EXACT FIRST, THEN FUZZY ---
-          const exactQuery = `%${query}%`;
-          const exactSql = `SELECT * FROM voters WHERE relative_name_hi LIKE ? ${wardClause} LIMIT 50`;
-          const exactResults = await db.all(exactSql, [exactQuery, ...wardParam]);
-
-          if (exactResults.length > 0) {
-            voters = exactResults;
-          } else {
-            const allVotersQuery = `SELECT * FROM voters ${wardClause ? 'WHERE ' + wardClause.replace('AND ', '') : ''}`;
-            const allVotersForWard = await db.all(allVotersQuery, wardParam);
-
-            const Fuse = (await import('fuse.js')).default;
-            const fuse = new Fuse(allVotersForWard, {
-              keys: ['relative_name_hi'],
-              threshold: 0.2, // Strict threshold
-              ignoreLocation: true,
-            });
-
-            voters = fuse.search(query).map(result => result.item).slice(0, 50);
+            const fuzzyResults = fuse.search(query).map(result => result.item);
+            voters = applyFuzzyPagination(fuzzyResults);
           }
         }
       } else {
         // If no query, just return a few recent ones, respecting ward
+        let baseSql = `SELECT * FROM voters`;
+        let countSql = `SELECT COUNT(*) as total FROM voters`;
+        let params: any[] = [];
+        
         if (ward) {
-          voters = await db.all(`SELECT * FROM voters WHERE ward = ? LIMIT 10`, [parseInt(ward, 10)]);
+          baseSql += ` WHERE ward = ?`;
+          countSql += ` WHERE ward = ?`;
+          params = [parseInt(ward, 10)];
         } else if (allowedArr.length > 0) {
-          voters = await db.all(`SELECT * FROM voters WHERE ward IN (${allowedArr.map(() => '?').join(',')}) LIMIT 10`, allowedArr);
-        } else {
-          voters = await db.all(`SELECT * FROM voters LIMIT 10`);
+          const inClause = `WHERE ward IN (${allowedArr.map(() => '?').join(',')})`;
+          baseSql += ` ${inClause}`;
+          countSql += ` ${inClause}`;
+          params = allowedArr;
         }
+        
+        voters = await executePaginatedSql(baseSql, countSql, params);
       }
 
       // Mask voter ID for public and unpaid users
@@ -230,7 +263,16 @@ export async function GET(request: Request) {
         });
       }
 
-      return NextResponse.json({ success: true, data: voters });
+      return NextResponse.json({ 
+        success: true, 
+        data: voters,
+        pagination: {
+          currentPage,
+          totalPages,
+          totalItems,
+          limit
+        }
+      });
     } finally {
       await db.close();
     }

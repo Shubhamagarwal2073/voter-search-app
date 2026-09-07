@@ -143,7 +143,9 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
                 if not v.get('voter_id') or str(v.get('voter_id')) == "":
                     sn = v.get('serial_number', 0)
                     ward_str = str(ward) if ward is not None else "0"
-                    v['voter_id'] = f"TEMP_ID_W{ward_str}_{sn}"
+                    clean_name = source_filename.replace('.pdf', '').replace(' ', '_').replace('-', '_')
+                    pg = v.get('page_number', 0)
+                    v['voter_id'] = f"TEMP_W{ward_str}_{clean_name}_P{pg}_S{sn}"
                 
                 if ward is not None:
                     v['ward'] = ward

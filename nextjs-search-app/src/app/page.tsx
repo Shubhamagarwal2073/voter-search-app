@@ -22,6 +22,11 @@ export default function Home() {
   const [quotaError, setQuotaError] = useState<{ message: string, code: string } | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [showOath, setShowOath] = useState(false);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalResultItems, setTotalResultItems] = useState(0);
 
   useEffect(() => {
     if (!localStorage.getItem('voterOathAccepted')) {
@@ -66,12 +71,12 @@ export default function Home() {
     }
   };
 
-  const fetchResults = async (searchQuery: string, type: string, wardQuery: string) => {
+  const fetchResults = async (searchQuery: string, type: string, wardQuery: string, pageNumber: number = 1) => {
     setLoading(true);
     setQuotaError(null);
     setApiError(null);
     try {
-      const res = await fetch(`/api/voters?q=${encodeURIComponent(searchQuery)}&type=${type}&ward=${encodeURIComponent(wardQuery)}`);
+      const res = await fetch(`/api/voters?q=${encodeURIComponent(searchQuery)}&type=${type}&ward=${encodeURIComponent(wardQuery)}&page=${pageNumber}`);
       const json = await res.json();
 
       if (res.status === 429) {
@@ -94,6 +99,11 @@ export default function Home() {
 
       if (json.success) {
         setResults(json.data);
+        if (json.pagination) {
+          setCurrentPage(json.pagination.currentPage);
+          setTotalPages(json.pagination.totalPages);
+          setTotalResultItems(json.pagination.totalItems);
+        }
       } else {
         console.error('Error fetching data:', json.error);
         setApiError(json.error || 'An unexpected error occurred.');
@@ -118,7 +128,8 @@ export default function Home() {
       setResults([]);
       return;
     }
-    fetchResults(query, searchType, ward);
+    // Always start at page 1 for a brand new search
+    fetchResults(query, searchType, ward, 1);
   };
 
   return (
@@ -470,6 +481,30 @@ export default function Home() {
                 </table>
               </div>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between bg-[#E1D7BC] p-4 border border-[#1E2A42] shadow-[3px_3px_0_rgba(30,42,66,0.1)]">
+                <button
+                  onClick={() => fetchResults(query, searchType, ward, currentPage - 1)}
+                  disabled={currentPage <= 1 || loading}
+                  className="px-4 py-2 font-['Courier_Prime'] font-bold text-sm bg-[#1E2A42] text-[#E9E1CC] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#2A3B5C] transition-colors"
+                >
+                  &larr; Previous
+                </button>
+                <div className="font-['Courier_Prime'] text-[#1E2A42] text-sm font-bold text-center">
+                  Page {currentPage} of {totalPages}
+                  <div className="text-xs font-normal text-[#4A4536] mt-0.5">Total Results: {totalResultItems}</div>
+                </div>
+                <button
+                  onClick={() => fetchResults(query, searchType, ward, currentPage + 1)}
+                  disabled={currentPage >= totalPages || loading}
+                  className="px-4 py-2 font-['Courier_Prime'] font-bold text-sm bg-[#1E2A42] text-[#E9E1CC] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#2A3B5C] transition-colors"
+                >
+                  Next &rarr;
+                </button>
+              </div>
+            )}
           </section>
         )}
       </main>
