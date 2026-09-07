@@ -25,6 +25,7 @@ export const authOptions: any = {
     async signIn({ user, account, profile }: any) {
       if (user.email) {
         const emailLower = user.email.toLowerCase();
+        const db = await getAuthDb();
         const existingUser = await db.get(`SELECT * FROM users WHERE email = ?`, [emailLower]);
         
         if (!existingUser) {
@@ -42,6 +43,7 @@ export const authOptions: any = {
     async jwt({ token, user }: any) {
       if (token.email) {
         const emailLower = token.email.toLowerCase();
+        const db = await getAuthDb();
         const existingUser = await db.get(`SELECT * FROM users WHERE email = ?`, [emailLower]);
         await db.close();
         if (existingUser) {
