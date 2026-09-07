@@ -296,7 +296,7 @@ export default function Home() {
                 >
                   <option value="voter_id">Voter ID</option>
                   <option value="name">Name (Login)</option>
-                  <option value="relative_name">Father's Name (Login)</option>
+                  <option value="relative_name">Father/Husband Name (Login)</option>
                   <option value="house">House Number (Login)</option>
                   <option value="serial">Serial Number (Login)</option>
                 </select>
