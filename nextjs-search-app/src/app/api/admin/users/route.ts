@@ -7,7 +7,7 @@ import path from 'path';
 export const dynamic = 'force-dynamic';
 
 async function openLocalDb() {
-  const dbPath = path.resolve(process.cwd(), 'auth.db');
+  const dbPath = path.resolve(process.cwd(), 'data', 'auth.db');
   return open({
     filename: dbPath,
     driver: sqlite3.Database

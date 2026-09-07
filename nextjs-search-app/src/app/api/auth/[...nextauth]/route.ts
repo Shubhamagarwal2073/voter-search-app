@@ -24,14 +24,14 @@ export const authOptions: any = {
   callbacks: {
     async signIn({ user, account, profile }: any) {
       if (user.email) {
-        const db = await getAuthDb();
-        const existingUser = await db.get(`SELECT * FROM users WHERE email = ?`, [user.email]);
+        const emailLower = user.email.toLowerCase();
+        const existingUser = await db.get(`SELECT * FROM users WHERE email = ?`, [emailLower]);
         
         if (!existingUser) {
           // If no user exists, we auto-enroll them as a 'guest'
-          const role = user.email === process.env.ADMIN_EMAIL ? 'admin' : 'guest';
+          const role = emailLower === process.env.ADMIN_EMAIL?.toLowerCase() ? 'admin' : 'guest';
           const allowed_wards = role === 'admin' ? 'all' : '';
-          await db.run(`INSERT INTO users (email, role, allowed_wards) VALUES (?, ?, ?)`, [user.email, role, allowed_wards]);
+          await db.run(`INSERT INTO users (email, role, allowed_wards) VALUES (?, ?, ?)`, [emailLower, role, allowed_wards]);
         }
 
         await db.close();
@@ -41,8 +41,8 @@ export const authOptions: any = {
     },
     async jwt({ token, user }: any) {
       if (token.email) {
-        const db = await getAuthDb();
-        const existingUser = await db.get(`SELECT * FROM users WHERE email = ?`, [token.email]);
+        const emailLower = token.email.toLowerCase();
+        const existingUser = await db.get(`SELECT * FROM users WHERE email = ?`, [emailLower]);
         await db.close();
         if (existingUser) {
           token.role = existingUser.role;
