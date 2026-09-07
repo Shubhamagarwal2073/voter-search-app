@@ -32,7 +32,6 @@ export default function AdminDashboard() {
   
   // App Settings
   const [syncToCloud, setSyncToCloud] = useState(true);
-  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -121,52 +120,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const toggleSelectUser = (id: number) => {
-    setSelectedUsers(prev => 
-      prev.includes(id) ? prev.filter(uId => uId !== id) : [...prev, id]
-    );
-  };
 
-  const selectAll = () => {
-    if (selectedUsers.length === users.length) {
-      setSelectedUsers([]);
-    } else {
-      setSelectedUsers(users.map(u => u.id));
-    }
-  };
-
-  const handleSendWelcomeEmail = async () => {
-    if (selectedUsers.length === 0) {
-      alert("Please select at least one user to email.");
-      return;
-    }
-    
-    if (!confirm(`Are you sure you want to send welcome emails to ${selectedUsers.length} users?`)) return;
-    
-    setError("");
-    setSuccess("Sending emails...");
-    
-    let successCount = 0;
-    
-    for (const id of selectedUsers) {
-      const user = users.find(u => u.id === id);
-      if (!user) continue;
-      
-      try {
-        const res = await fetch("/api/email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: user.email, name: user.name }),
-        });
-        if (res.ok) successCount++;
-      } catch (e) {
-        console.error("Failed to email", user.email);
-      }
-    }
-    
-    setSuccess(`Successfully sent ${successCount} emails!`);
-    setSelectedUsers([]);
-  };
 
   if (loading) return <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
 
@@ -210,12 +164,7 @@ export default function AdminDashboard() {
             <p className="text-slate-500 mt-1">Manage application user identities, roles, and access controls.</p>
           </div>
           <div className="flex gap-3">
-             {selectedUsers.length > 0 && (
-                <button onClick={handleSendWelcomeEmail} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 px-5 rounded-lg shadow-sm shadow-indigo-200 transition-all active:scale-95 font-medium">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                  Send Welcome Email ({selectedUsers.length})
-                </button>
-             )}
+
              <button onClick={openDrawerForNew} className="flex items-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-2.5 px-5 rounded-lg shadow-sm transition-all active:scale-95 font-medium">
                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                Add User
@@ -263,9 +212,7 @@ export default function AdminDashboard() {
             <table className="w-full text-left whitespace-nowrap">
                <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-semibold border-b border-slate-200">
                   <tr>
-                     <th className="py-4 px-6 text-center w-12">
-                       <input type="checkbox" checked={users.length > 0 && selectedUsers.length === users.length} onChange={selectAll} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
-                     </th>
+
                      <th className="py-4 px-6">User details</th>
                      <th className="py-4 px-6">Access Role</th>
                      <th className="py-4 px-6">Ward Coverage</th>
@@ -275,9 +222,7 @@ export default function AdminDashboard() {
                <tbody className="divide-y divide-slate-100">
                   {users.map(user => (
                      <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-4 px-6 text-center">
-                           <input type="checkbox" checked={selectedUsers.includes(user.id)} onChange={() => toggleSelectUser(user.id)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
-                        </td>
+
                         <td className="py-4 px-6">
                            <div className="flex items-center gap-3">
                               <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
@@ -310,7 +255,7 @@ export default function AdminDashboard() {
                   ))}
                   {users.length === 0 && (
                      <tr>
-                        <td colSpan={5} className="py-12 text-center text-slate-500">No users found.</td>
+                        <td colSpan={4} className="py-12 text-center text-slate-500">No users found.</td>
                      </tr>
                   )}
                </tbody>
