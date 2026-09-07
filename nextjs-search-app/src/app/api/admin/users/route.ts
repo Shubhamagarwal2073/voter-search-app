@@ -171,3 +171,65 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const session: any = await getServerSession(authOptions);
+    if (session?.user?.role !== "admin" && session?.user?.email !== process.env.ADMIN_EMAIL) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    const email = searchParams.get('email'); // for Neon deletion
+
+    if (!id) {
+      return NextResponse.json({ error: "ID is required" }, { status: 400 });
+    }
+
+    // 1. DELETE FROM LOCAL auth.db
+    const db = await open({
+      filename: authDbPath,
+      driver: sqlite3.Database,
+    });
+    
+    await db.run("DELETE FROM users WHERE id = ?", [id]);
+    await db.close();
+
+    // 2. DELETE FROM NEON DB (Optional / Best Effort)
+    let neonSyncFailed = false;
+    let neonErrorMsg = "";
+    
+    try {
+      if (process.env.NEON_DATABASE_URL && email) {
+        const { Client } = require('pg');
+        const client = new Client({
+          connectionString: process.env.NEON_DATABASE_URL,
+          ssl: { rejectUnauthorized: false }
+        });
+        
+        await client.connect();
+        await client.query("DELETE FROM users WHERE email = $1", [email]);
+        await client.end();
+      }
+    } catch (err: any) {
+      console.error("Neon DB Sync Failed on Delete:", err);
+      neonSyncFailed = true;
+      neonErrorMsg = err.message || "Failed to delete from Neon Cloud.";
+    }
+
+    if (neonSyncFailed) {
+      return NextResponse.json({ 
+        success: true, 
+        neonFailed: true, 
+        message: `Deleted locally from auth.db safely, but Neon sync failed: ${neonErrorMsg}.`
+      });
+    }
+
+    return NextResponse.json({ success: true, message: "User deleted successfully." });
+  } catch (error: any) {
+    console.error("Delete error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+

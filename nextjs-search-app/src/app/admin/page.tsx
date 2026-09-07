@@ -77,6 +77,29 @@ export default function AdminDashboard() {
     setIsDrawerOpen(true);
   };
 
+  const handleDelete = async (user: User) => {
+    if (!confirm(`Are you sure you want to delete ${user.email}? This action cannot be undone.`)) {
+      return;
+    }
+    setError("");
+    setSuccess("");
+    try {
+      const res = await fetch(`/api/admin/users?id=${user.id}&email=${encodeURIComponent(user.email)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete user");
+      if (data.neonFailed) {
+        setError(data.message);
+      } else {
+        setSuccess("User deleted successfully!");
+      }
+      fetchUsers();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -247,9 +270,14 @@ export default function AdminDashboard() {
                            {user.allowed_wards || 'All Wards'}
                         </td>
                         <td className="py-4 px-6 text-right">
-                           <button onClick={() => openDrawerForEdit(user)} className="text-indigo-600 hover:text-indigo-800 font-medium text-sm border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors">
-                              Edit Access
-                           </button>
+                           <div className="flex justify-end gap-2">
+                             <button onClick={() => openDrawerForEdit(user)} className="text-indigo-600 hover:text-indigo-800 font-medium text-sm border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors">
+                                Edit
+                             </button>
+                             <button onClick={() => handleDelete(user)} className="text-red-600 hover:text-red-800 font-medium text-sm border border-red-200 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors">
+                                Delete
+                             </button>
+                           </div>
                         </td>
                      </tr>
                   ))}
