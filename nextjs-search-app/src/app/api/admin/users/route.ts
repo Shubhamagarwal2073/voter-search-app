@@ -91,7 +91,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ 
         success: true, 
         neonFailed: true, 
-        message: \`Saved locally in auth.db safely, but Neon sync failed: \${neonErrorMsg}. Try again or uncheck Sync to bypass.\`
+        message: `Saved locally in auth.db safely, but Neon sync failed: ${neonErrorMsg}. Try again or uncheck Sync to bypass.`
       });
     }
 
