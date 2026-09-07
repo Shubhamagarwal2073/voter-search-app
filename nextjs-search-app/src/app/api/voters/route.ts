@@ -104,7 +104,9 @@ export async function GET(request: Request) {
     // --- END RATE LIMITING ---
 
     let allowedArr: number[] = [];
-    if (role === 'paid' || role === 'user') {
+    
+    // Only strictly enforce allowed_wards if they are a 'paid' user
+    if (role === 'paid') {
       const allowed = session?.user?.allowed_wards;
       if (allowed === 'all') {
         // Allowed all wards, leave array empty
@@ -117,6 +119,16 @@ export async function GET(request: Request) {
       } else {
         // If they are a paid user but have an empty allowed_wards field, lock them out!
         return NextResponse.json({ success: false, error: 'Your account has not been assigned to any wards. Please contact the administrator.' }, { status: 403 });
+      }
+    } else if (role === 'user' || role === 'guest') {
+      // For free guests, if they have a specific ward restriction, apply it.
+      // Otherwise, they are allowed to search all wards (bounded by their rate limit).
+      const allowed = session?.user?.allowed_wards;
+      if (allowed && allowed !== 'all' && allowed.trim() !== '') {
+        allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
+        if (ward && !allowedArr.includes(parseInt(ward, 10))) {
+          return NextResponse.json({ success: false, error: 'Forbidden ward access' }, { status: 403 });
+        }
       }
     }
 

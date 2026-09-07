@@ -27,10 +27,22 @@ export async function GET() {
       
       // Filter wards based on user's allowed_wards
       if (session && session.user) {
+        const role = (session.user as any).role;
         const allowed = (session.user as any).allowed_wards;
-        if (allowed && allowed !== 'all') {
-          const allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
-          wardNumbers = wardNumbers.filter(w => allowedArr.includes(w));
+        
+        if (role === 'paid') {
+          if (!allowed || allowed.trim() === '') {
+            wardNumbers = []; // Paid users with no wards assigned see nothing
+          } else if (allowed !== 'all') {
+            const allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
+            wardNumbers = wardNumbers.filter(w => allowedArr.includes(w));
+          }
+        } else if (role === 'user' || role === 'guest') {
+          // Guests can see all wards by default, unless specifically restricted
+          if (allowed && allowed !== 'all' && allowed.trim() !== '') {
+            const allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
+            wardNumbers = wardNumbers.filter(w => allowedArr.includes(w));
+          }
         }
       }
 
