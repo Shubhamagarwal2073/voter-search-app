@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { PrismaClient } from '@prisma/client';
 import { authOptions } from '../../auth/[...nextauth]/route';
 
+export const dynamic = 'force-dynamic';
+
 const prisma = new PrismaClient();
 
 // Helper to check admin
