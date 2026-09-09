@@ -9,9 +9,12 @@ from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from google.genai.errors import APIError, ClientError
 from database import init_db, insert_voters
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import google.auth
 from google.auth.exceptions import DefaultCredentialsError
+
+import io
 
 # Retry decorator for handling transient API errors automatically
 @retry(
@@ -20,10 +23,7 @@ from google.auth.exceptions import DefaultCredentialsError
     stop=stop_after_attempt(5)
 )
 def extract_from_chunk(client, pdf_path, start_page, end_page):
-    print(f"Extracting pages {start_page} to {end_page}...")
-    
-    with open(pdf_path, 'rb') as f:
-        pdf_bytes = f.read()
+    print(f"Extracting page {start_page} in halves...")
     
     response_schema = types.Schema(
         type=types.Type.ARRAY,
@@ -45,9 +45,8 @@ def extract_from_chunk(client, pdf_path, start_page, end_page):
         )
     )
 
-    prompt = f"""
+    base_prompt = f"""
     You are an expert at extracting structured data from Indian Electoral Rolls (Voter Lists) in Hindi.
-    Carefully read the single page {start_page} provided.
     Extract EVERY SINGLE grid box entry and return it as a JSON array of objects. Do not skip any boxes!
     
     CRITICAL RULE 1: If a grid box has the word 'DELETED' stamped across it, OR if the Serial Number has an 'S' prefix (e.g. 'S 1346'), you MUST set the "is_deleted_or_shifted" flag to true.
@@ -55,6 +54,12 @@ def extract_from_chunk(client, pdf_path, start_page, end_page):
     CRITICAL RULE 2 (SPELLING AND GRAMMAR): 
     - You must extract the Hindi names with 100% absolute precision. Pay strict attention to all matras (vowel signs). Do not guess or auto-correct the names.
     - For gender, strictly look at the text 'पुरुष' (male), 'स्त्री' (female), or 'तृतीय लिंग' (other). Do NOT guess the gender based on the name.
+    
+    CRITICAL RULE 3 (SUMMARY TABLES):
+    At the bottom of the final pages, there is often a summary table (e.g. "परिवर्धन की", "कुल"). You must IGNORE this summary table, but you MUST NOT skip the voter grid boxes located directly above it! Extract every single voter.
+    
+    CRITICAL RULE 4 (VILOPAN SUCHI / DELETIONS LIST):
+    The final pages contain supplements. If a voter box is located under the header "विलोपन सूची" (Vilopan Suchi / Deletions List), you MUST set "is_deleted_or_shifted" to true! Only boxes under "परिवर्धन सूची" (Additions) should be false.
     
     PAY CLOSE ATTENTION to the top of each grid box, there are TWO distinct numbers:
     1. The Serial Number (क्रम संख्या): Located in a small box at the top left. Read the actual digits perfectly.
@@ -65,11 +70,27 @@ def extract_from_chunk(client, pdf_path, start_page, end_page):
     Set the page_number field to {start_page}.
     """
 
-    response = client.models.generate_content(
+    reader = PdfReader(pdf_path)
+    page_top = reader.pages[0]
+    
+    upper_right = page_top.mediabox.upper_right
+    lower_left = page_top.mediabox.lower_left
+    # Add a slight overlap (e.g. 55% instead of 50%) to ensure boxes in the middle aren't cut
+    mid_y_top = lower_left[1] + (upper_right[1] - lower_left[1]) * 0.45 
+    mid_y_bottom = lower_left[1] + (upper_right[1] - lower_left[1]) * 0.55
+    
+    # Process TOP HALF
+    page_top.mediabox.lower_left = (lower_left[0], mid_y_top)
+    writer_top = PdfWriter()
+    writer_top.add_page(page_top)
+    pdf_bytes_top = io.BytesIO()
+    writer_top.write(pdf_bytes_top)
+    
+    response_top = client.models.generate_content(
         model='gemini-2.5-flash',
         contents=[
-            types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
-            prompt
+            types.Part.from_bytes(data=pdf_bytes_top.getvalue(), mime_type='application/pdf'),
+            base_prompt + "\nCarefully read the TOP HALF of the page provided."
         ],
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -77,7 +98,45 @@ def extract_from_chunk(client, pdf_path, start_page, end_page):
             temperature=0.1
         )
     )
-    return json.loads(response.text)
+    
+    # Re-read for BOTTOM HALF
+    reader_bottom = PdfReader(pdf_path)
+    page_bottom = reader_bottom.pages[0]
+    page_bottom.mediabox.upper_right = (upper_right[0], mid_y_bottom)
+    
+    writer_bottom = PdfWriter()
+    writer_bottom.add_page(page_bottom)
+    pdf_bytes_bottom = io.BytesIO()
+    writer_bottom.write(pdf_bytes_bottom)
+    
+    response_bottom = client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=[
+            types.Part.from_bytes(data=pdf_bytes_bottom.getvalue(), mime_type='application/pdf'),
+            base_prompt + "\nCarefully read the BOTTOM HALF of the page provided."
+        ],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=response_schema,
+            temperature=0.1
+        )
+    )
+    
+    try:
+        voters_top = json.loads(response_top.text)
+    except:
+        voters_top = []
+        
+    try:
+        voters_bottom = json.loads(response_bottom.text)
+    except:
+        voters_bottom = []
+        
+    # De-duplicate any middle boxes that might have been caught in the overlap
+    all_voters = voters_top + voters_bottom
+    unique_voters = {v['serial_number']: v for v in all_voters if v.get('serial_number')}.values()
+    
+    return list(unique_voters)
 
 
 def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page_arg: int = None):
@@ -112,8 +171,10 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
     
     batch_size = 1
 
-    for i in range(start_page_arg - 1, actual_end_page, batch_size):
-        chunk_pages = reader.pages[i:i+batch_size]
+    def process_page(i):
+        # Create a local reader for thread safety
+        local_reader = PdfReader(pdf_path)
+        chunk_pages = local_reader.pages[i:i+batch_size]
         start_page = i + 1
         end_page = i + len(chunk_pages)
         
@@ -129,13 +190,11 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
             voters = extract_from_chunk(client, str(temp_pdf), start_page, end_page)
             print(f"  -> Extracted {len(voters)} voters from page {start_page}.")
             source_filename = os.path.basename(pdf_path)
-            # Filter out deleted or shifted voters, and assign temporary fallback IDs
             valid_voters = []
             for v in voters:
                 if v.get('is_deleted_or_shifted', False):
                     continue
                 
-                # Strip leading/trailing spaces from all string fields (name, relative_name, voter_id, etc.)
                 for key, value in v.items():
                     if isinstance(value, str):
                         v[key] = value.strip()
@@ -153,17 +212,22 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
                 
                 valid_voters.append(v)
                 
-            print(f"  -> Successfully kept {len(valid_voters)} valid voters.")
-            all_voters.extend(valid_voters)
-            insert_voters(valid_voters)
+            print(f"  -> Successfully kept {len(valid_voters)} valid voters from page {start_page}.")
+            return valid_voters
         except Exception as e:
             print(f"Failed to process page {start_page}: {e}")
+            return []
         finally:
             if temp_pdf.exists():
                 temp_pdf.unlink()
-        
-        # Removed artificial sleep due to high quota limits
-        pass
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(process_page, i) for i in range(start_page_arg - 1, actual_end_page, batch_size)]
+        for future in as_completed(futures):
+            valid_voters = future.result()
+            if valid_voters:
+                all_voters.extend(valid_voters)
+                insert_voters(valid_voters)
 
     try:
         temp_dir.rmdir()

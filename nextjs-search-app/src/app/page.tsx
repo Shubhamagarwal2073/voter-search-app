@@ -5,6 +5,7 @@ import 'react-transliterate/dist/index.css';
 import DatabaseStatsModal from '@/components/DatabaseStatsModal';
 import { useSession, signOut } from "next-auth/react";
 import { useLanguage } from "@/context/LanguageContext";
+import { sendGAEvent } from "@next/third-parties/google";
 
 export default function Home() {
   const { data: session } = useSession();
@@ -72,6 +73,10 @@ export default function Home() {
   };
 
   const fetchResults = async (searchQuery: string, type: string, wardQuery: string, pageNumber: number = 1) => {
+    // Fire analytics event instantly in background
+    if (searchQuery) {
+      sendGAEvent('event', 'search', { search_term: searchQuery, search_type: type });
+    }
     setLoading(true);
     setQuotaError(null);
     setApiError(null);
@@ -345,11 +350,11 @@ export default function Home() {
             <div className="w-16 h-16 bg-[#A2382B]/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-[#A2382B]">
               <svg className="w-8 h-8 text-[#A2382B]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
             </div>
-            <h2 className="text-2xl font-black text-[#1E2A42] mb-3 font-['Fraunces']">Search Limit Reached</h2>
+            <h2 className="text-2xl font-black text-[#1E2A42] mb-3 font-['Fraunces']">Search Limit expired</h2>
             <p className="text-[#4A4536] text-sm md:text-base mb-6 max-w-lg mx-auto">
               {quotaError.code === 'QUOTA_EXCEEDED_PUBLIC'
-                ? "You have used your 2 free public searches for today. To unlock more searches, please login securely using your Google Account."
-                : "Your guest search quota is exhausted. To get unlimited premium access to the entire electoral roll database, please contact the administrator or RK Coaching Classes to upgrade your account."}
+                ? "आपने आज के लिए अपनी 2 निःशुल्क खोजों का उपयोग कर लिया है। अधिक खोजों को अनलॉक करने के लिए, कृपया अपने Google खाते का उपयोग करके सुरक्षित रूप से लॉगिन करें।"
+                : "आपका अतिथि खोज कोटा समाप्त हो गया है। संपूर्ण मतदाता सूची डेटाबेस तक असीमित प्रीमियम पहुंच प्राप्त करने के लिए, कृपया अपने खाते को अपग्रेड करने के लिए व्यवस्थापक या RK Coaching Classes से संपर्क करें।"}
             </p>
             {quotaError.code === 'QUOTA_EXCEEDED_PUBLIC' && !session ? (
               <button onClick={() => window.location.href = '/api/auth/signin'} className="inline-flex items-center justify-center px-8 py-3 bg-[#E9E1CC] border border-[#1E2A42] text-[#1E2A42] font-['Courier_Prime'] font-bold tracking-widest uppercase hover:bg-white transition-colors shadow-[3px_3px_0_rgba(30,42,66,1)] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-[2px_2px_0_rgba(30,42,66,1)]">
