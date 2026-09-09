@@ -38,8 +38,8 @@ export async function GET() {
       });
 
       const serials = votersInWard
-        .map(v => v.serial_number)
-        .filter((s): s is number => s !== null);
+        .map((v: { serial_number: number | null }) => v.serial_number)
+        .filter((s: number | null): s is number => s !== null);
 
       let missing: number[] = [];
       if (serials.length > 0) {

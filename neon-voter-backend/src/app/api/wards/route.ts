@@ -13,19 +13,18 @@ export async function GET() {
     try {
       const wards = await prisma.voter.groupBy({
         by: ['ward'],
-        where: { ward: { not: null } },
         orderBy: { ward: 'asc' },
       });
       const countRow = await prisma.voter.count();
       
-      let wardNumbers = wards.map(w => w.ward);
+      let wardNumbers = wards.map((w: { ward: number }) => w.ward);
       
       // Filter wards based on user's allowed_wards
       if (session && session.user) {
         const allowed = (session.user as any).allowed_wards;
         if (allowed && allowed !== 'all') {
           const allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
-          wardNumbers = wardNumbers.filter(w => w !== null && allowedArr.includes(w));
+          wardNumbers = wardNumbers.filter((w: number) => allowedArr.includes(w));
         }
       }
 
