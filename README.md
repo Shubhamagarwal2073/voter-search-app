@@ -27,6 +27,8 @@ The system uses a highly scalable **Google Cloud Run** architecture to process P
 - **📂 Queue-to-Archive Architecture**: Flawless state management. PDFs uploaded to `queue/` are processed and automatically migrated to `archive/` to guarantee idempotency and prevent duplicate processing.
 - **🤖 Auto-Healing AI (Recorrection)**: A dedicated Cloud Run QA job crops and re-reads specific page segments, mathematically cross-checks them against the JSON output, and auto-heals any AI hallucinations or "gibberish".
 - **🔐 Role-Based Access Control (RBAC)**: Secure Admin Dashboard using `NextAuth`. Only authorized Google accounts can log in, and users are strictly restricted to searching within their assigned Wards.
+- **🧑‍💼 Candidate Directory**: A fast, static JSON-backed portal displaying election candidates, featuring AI-generated party symbol icons, robust Hindi transliteration search, and automatic gender-inferred avatars.
+- **📸 Voter Selfie Booth**: An interactive, browser-based camera experience allowing voters to capture and download selfies stamped with a beautiful "PROUD VOTER" overlay.
 - **⚡ Production VM Deployment**: Hosted on a GCP e2-micro instance, daemonized via PM2 for 24/7 uptime, with Swap Memory configured for high-performance SQLite querying.
 
 ---
