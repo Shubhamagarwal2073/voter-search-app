@@ -75,7 +75,7 @@ export default function Home() {
   const fetchResults = async (searchQuery: string, type: string, wardQuery: string, pageNumber: number = 1) => {
     // Fire analytics event instantly in background
     if (searchQuery) {
-      sendGAEvent('event', 'search', { search_term: searchQuery, search_type: type });
+      sendGAEvent({ event: 'search', search_term: searchQuery, search_type: type });
     }
     setLoading(true);
     setQuotaError(null);
