@@ -8,11 +8,59 @@ from google.cloud import storage
 
 # Import existing extraction functions
 from extractor import extract_from_chunk
-from recorrection import extract_sample_from_crop
+from google.genai import types
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from google.genai.errors import APIError
 
 import google.auth
 from google.auth.exceptions import DefaultCredentialsError
 from google import genai
+
+@retry(
+    retry=retry_if_exception_type(APIError),
+    wait=wait_exponential(multiplier=2, min=2, max=60),
+    stop=stop_after_attempt(3)
+)
+def extract_sample_from_crop(client, pdf_path, page_num):
+    with open(pdf_path, 'rb') as f:
+        pdf_bytes = f.read()
+    
+    response_schema = types.Schema(
+        type=types.Type.ARRAY,
+        items=types.Schema(
+            type=types.Type.OBJECT,
+            properties={
+                "sn": types.Schema(type=types.Type.INTEGER, description="Serial Number"),
+                "n": types.Schema(type=types.Type.STRING, description="Hindi Name"),
+                "is_gibberish": types.Schema(type=types.Type.BOOLEAN, description="True ONLY IF the name looks like corrupted OCR gibberish. False if it is a normal valid Hindi name.")
+            },
+            required=["sn", "n", "is_gibberish"]
+        )
+    )
+
+    prompt = f"""
+    You are an expert QA inspector looking at a horizontally sliced image of an electoral roll page {page_num}.
+    The bottom row of grid boxes might be cut in half by the image edge. 
+    IGNORE the bottom row completely. Do not attempt to read any box that is touching the bottom edge.
+    ONLY extract the top rows of voters that are 100% fully visible inside the frame.
+    Return their Serial Number ('sn') and Hindi Name ('n').
+    Pay strict attention to all Hindi matras.
+    CRITICAL: Evaluate the extracted name. If it looks like OCR gibberish where matras were dropped or letters are spaced out, set 'is_gibberish' to true.
+    """
+
+    response = client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=[
+            types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
+            prompt
+        ],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=response_schema,
+            temperature=0.0,
+        ),
+    )
+    return json.loads(response.text)
 
 INPUT_BUCKET_NAME = os.environ.get("INPUT_BUCKET", "ocr-voter-lists-input")
 OUTPUT_BUCKET_NAME = os.environ.get("OUTPUT_BUCKET", "ocr-voter-lists-output")

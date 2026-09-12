@@ -6,8 +6,6 @@ from pypdf import PdfReader, PdfWriter
 from google.cloud import storage
 
 from extractor import extract_from_chunk
-from recorrection import extract_sample_from_crop
-from rescan_pages import parse_specific_pages
 
 import google.auth
 from google.auth.exceptions import DefaultCredentialsError

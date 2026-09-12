@@ -17,12 +17,22 @@ nextjs-search-app/build/
 nextjs-search-app/.env.local
 nextjs-search-app/.env.development.local
 nextjs-search-app/.env.test.local
-nextjs-search-app/.env.production.local
+voter-portal-frontend/node_modules/
+voter-portal-frontend/.next/
+voter-portal-frontend/out/
+voter-portal-frontend/build/
+voter-portal-frontend/.env.local
+voter-portal-frontend/.env.development.local
+voter-portal-frontend/.env.test.local
+voter-portal-frontend/.env.production.local
 
 # Temporary Files and Big Data
 *.pdf
 temp_pages/
 temp_page*.pdf
+Backup_ward/
+*.db.backup*
+input_pdfs/
 
 # IDEs and OS
 .vscode/

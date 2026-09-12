@@ -1,4 +1,5 @@
 pypdf
 google-genai
-tenacity
 google-auth
+google-cloud-storage
+tenacity
