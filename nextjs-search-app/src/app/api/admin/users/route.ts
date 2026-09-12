@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../auth/[...nextauth]/route';
 
 // Force dynamic
 export const dynamic = 'force-dynamic';
@@ -14,9 +16,21 @@ async function openLocalDb() {
   });
 }
 
+// Defense-in-depth: Strict admin verification directly in the API handler
+async function verifyAdmin() {
+  const session: any = await getServerSession(authOptions);
+  const isAdmin = session?.user?.role === 'admin' || (session?.user?.email && process.env.ADMIN_EMAIL && session.user.email === process.env.ADMIN_EMAIL);
+  return isAdmin;
+}
+
 // GET all auth users
 export async function GET() {
   try {
+    const isAuthorized = await verifyAdmin();
+    if (!isAuthorized) {
+      return NextResponse.json({ error: "Unauthorized: Admin access required" }, { status: 403 });
+    }
+
     const db = await openLocalDb();
     
     // Read from users table
@@ -37,6 +51,11 @@ export async function GET() {
 // UPDATE an auth user (with dual-sync logic)
 export async function PUT(request: Request) {
   try {
+    const isAuthorized = await verifyAdmin();
+    if (!isAuthorized) {
+      return NextResponse.json({ error: "Unauthorized: Admin access required" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { id, name, email, role, allowed_wards, syncToNeon } = body;
 
@@ -58,11 +77,6 @@ export async function PUT(request: Request) {
 
     if (syncToNeon) {
       try {
-        // Here we simulate the Neon connection sync using Neon's connection string
-        // Since we are inside the Vercel backend we would typically use 'pg' or '@neondatabase/serverless'
-        // But for this example, we'll try to hit an internal Neon migration endpoint, or use the Neon URL
-        
-        // Let's assume Neon URL is in process.env.NEON_DATABASE_URL
         if (process.env.NEON_DATABASE_URL) {
           const { Client } = require('pg');
           const client = new Client({
@@ -87,7 +101,6 @@ export async function PUT(request: Request) {
     }
 
     if (neonSyncFailed) {
-      // The local save was successful, but Neon dropped.
       return NextResponse.json({ 
         success: true, 
         neonFailed: true, 
@@ -105,6 +118,11 @@ export async function PUT(request: Request) {
 // CREATE an auth user (with dual-sync logic)
 export async function POST(request: Request) {
   try {
+    const isAuthorized = await verifyAdmin();
+    if (!isAuthorized) {
+      return NextResponse.json({ error: "Unauthorized: Admin access required" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { name, email, role, allowed_wards, syncToNeon } = body;
 
@@ -174,9 +192,14 @@ export async function POST(request: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    const isAuthorized = await verifyAdmin();
+    if (!isAuthorized) {
+      return NextResponse.json({ error: "Unauthorized: Admin access required" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
-    const email = searchParams.get('email'); // for Neon deletion
+    const email = searchParams.get('email');
 
     if (!id) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
@@ -184,7 +207,6 @@ export async function DELETE(req: Request) {
 
     // 1. DELETE FROM LOCAL auth.db
     const db = await openLocalDb();
-    
     await db.run("DELETE FROM users WHERE id = ?", [id]);
     await db.close();
 
@@ -224,4 +246,3 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

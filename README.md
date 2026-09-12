@@ -67,7 +67,6 @@ During live election polling in Ward 5, the platform was deployed directly to bo
 ### 1. Ground Operations & Volunteer Tools
 * **Live Voting Calculator Pad (`/voting`)**: Interactive on-device keypad allowing booth workers to mark votes slip-by-slip, calculate turnout percentages in real-time, and cross-reference unvoted voters.
 * **Gali & Block Distribution**: Groups voters by physical neighborhoods (Galis/Colonies) to help volunteers organize targeted voter turnout drives.
-* **Polling Duty Lookup (`/duty`)**: Instant lookup for polling officers and staff assigned to specific booths across wards.
 
 ### 2. High-Accuracy AI OCR Engine (`core/`)
 * **Gemini 2.5 Flash Vision**: Single-page high-resolution extraction preventing row-splitting matra corruption.
@@ -95,8 +94,8 @@ Voter_scrap/
 │   ├── analytics/         # Google Analytics verification proof screenshots
 │   └── INTERVIEW_PREP.md  # System architecture & technical interview questions
 ├── nextjs-search-app/     # Core search engine & volunteer portal (GCP & Vercel)
-│   ├── data/              # SQLite databases (voters.db, duty_candidate.db)
-│   └── src/app/           # Next.js App Router (Search, Duty, Voting pad)
+│   ├── data/              # SQLite databases (voters.db, ward5_voting.db)
+│   └── src/app/           # Next.js App Router (Search & Voting pad)
 ├── outputs/               # Generated datasets & exports
 │   ├── excel_csv/         # Ward 5 Block & Gali CSVs and combined Excel workbook
 │   └── json/              # Candidate directory and ward JSON outputs

@@ -1,0 +1,26 @@
+# Block automated scrapers and crawler bots from indexing raw APIs and admin pages
+User-agent: *
+Disallow: /api/
+Disallow: /admin/
+Disallow: /login
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Scrapy
+Disallow: /

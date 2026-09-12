@@ -26,29 +26,75 @@ export async function GET(request: Request) {
   const windowMs24h = 24 * 60 * 60 * 1000; // 24 hours for freemium
 
   const { searchParams } = new URL(request.url);
-  const query = (searchParams.get('q') || '').trim();
+  
+  // Anti-Scraping: Strip SQL wildcard characters (% and _) from user query to prevent database dumping
+  const rawQuery = (searchParams.get('q') || '').trim();
+  const query = rawQuery.replace(/[%_]/g, '');
   const type = searchParams.get('type') || 'name'; // 'name', 'voter_id', 'house', 'serial'
   let ward = searchParams.get('ward') || ''; // optional ward filter
-  
-  // Parse pagination params with safe fallbacks and caps
-  let limit = Math.min(Math.max(1, Number(searchParams.get('limit')) || 50), 200);
-  if (!Number.isFinite(limit)) limit = 50;
-  
-  let page = Number(searchParams.get('page')) || 1;
-  if (!Number.isFinite(page) || page < 1) page = 1;
 
   try {
     const session: any = await getServerSession(authOptions);
     const role = session?.user?.role || 'public';
+    const isAdmin = role === 'admin' || (session?.user?.email && process.env.ADMIN_EMAIL && session.user.email === process.env.ADMIN_EMAIL);
+    const isPaid = role === 'paid';
+    const isPrivileged = isAdmin || isPaid;
 
-    // Security Rule: Public users (not logged in) can ONLY search by Voter ID
-    if (role === 'public' && query.length > 0 && type !== 'voter_id') {
-      return NextResponse.json({ success: false, error: 'Public users can only search by Voter ID. Please sign in with Google to search by Name.' }, { status: 403 });
+    // --- ANTI-SCRAPING & DATA LEAK DEFENSES ---
+
+    // Rule 1: Public users (not logged in) can ONLY search by Voter ID
+    if (role === 'public' && type !== 'voter_id') {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Public users can only search by Voter ID. Please sign in with Google to search by Name.' 
+      }, { status: 403 });
+    }
+
+    // Rule 2: Unauthenticated and guest users CANNOT browse or dump the database with an empty query
+    if (!isPrivileged && !query) {
+      return NextResponse.json({ 
+        success: true, 
+        data: [], 
+        message: 'Please enter a search query (Voter ID, name, or house number).',
+        pagination: { currentPage: 1, totalPages: 0, totalItems: 0, limit: 25 }
+      });
+    }
+
+    // Rule 3: Enforce minimum query length to prevent single-letter scraping sweeps
+    if (!isPrivileged && query) {
+      const minLength = (type === 'voter_id' || type === 'serial') ? 2 : 3;
+      if (query.length < minLength) {
+        return NextResponse.json({ 
+          success: false, 
+          error: `Search query too short. Please enter at least ${minLength} characters.` 
+        }, { status: 400 });
+      }
+    }
+
+    // Rule 4: Strict pagination clamping for non-privileged users
+    let limit = Number(searchParams.get('limit')) || 25;
+    if (!Number.isFinite(limit)) limit = 25;
+    if (isPrivileged) {
+      limit = Math.min(Math.max(1, limit), 100);
+    } else {
+      limit = Math.min(Math.max(1, limit), 25); // Max 25 rows per page for guests
+    }
+
+    let page = Number(searchParams.get('page')) || 1;
+    if (!Number.isFinite(page) || page < 1) page = 1;
+
+    // Rule 5: Hard cap on deep pagination for non-privileged users (Max 4 pages = 100 records max per search)
+    if (!isPrivileged && page > 4) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Pagination limit reached. Please refine your search query for more specific results.',
+        code: 'PAGE_LIMIT_EXCEEDED' 
+      }, { status: 403 });
     }
 
     // --- RATE LIMITING LOGIC ---
-    // TIER 3: ADMINS & PAID USERS - Unlimited total, but 25 requests per minute to prevent scraping
-    if (role === 'admin' || role === 'paid' || (session?.user?.email && process.env.ADMIN_EMAIL && session.user.email === process.env.ADMIN_EMAIL)) {
+    if (isPrivileged) {
+      // TIER 3: ADMINS & PAID USERS - Unlimited total, but 25 requests per minute to prevent automated bot loops
       const rateLimitData = rateLimitMap.get(ip);
       const windowMs = 60 * 1000; // 1 minute
       if (rateLimitData) {
@@ -57,14 +103,18 @@ export async function GET(request: Request) {
         } else {
           rateLimitData.count++;
           if (rateLimitData.count > 25) {
-            return NextResponse.json({ success: false, error: 'Too many requests. Please wait a minute before searching again.', code: 'RATE_LIMIT_ADMIN' }, { status: 429 });
+            return NextResponse.json({ 
+              success: false, 
+              error: 'Too many requests. Please wait a minute before searching again.', 
+              code: 'RATE_LIMIT_ADMIN' 
+            }, { status: 429 });
           }
         }
       } else {
         rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
       }
     } else {
-      // TIER 1 & 2: PUBLIC and GUESTS - Persistent IP tracking in DB
+      // TIER 1 & 2: PUBLIC and GUESTS - Persistent IP tracking in SQLite
       const userAgent = request.headers.get('user-agent') || 'unknown_ua';
       const clientIdentifier = `${ip}|${userAgent}`;
 
@@ -88,21 +138,21 @@ export async function GET(request: Request) {
           await authDb.run('INSERT INTO public_limits (ip, search_count, last_reset) VALUES (?, 0, ?)', [clientIdentifier, now]);
         }
 
-        console.log(`[RateLimit] Role: ${role}, Client: ${clientIdentifier}, CurrentCount: ${currentCount}`);
+        const quotaLimit = (role === 'guest' || role === 'user') ? 4 : 2; // Public gets 2, Guests get 4 total
 
-        const limit = (role === 'guest' || role === 'user') ? 4 : 2; // Public gets 2, Guests get 2 MORE (4 total per IP)
+        if (currentCount >= quotaLimit) {
+          const code = role === 'guest' ? 'QUOTA_EXCEEDED_GUEST' : 'QUOTA_EXCEEDED_PUBLIC';
+          return NextResponse.json({ 
+            success: false, 
+            error: 'Daily search limit exceeded.', 
+            code 
+          }, { status: 429 });
+        }
 
-        // If there is an actual search query (not just initial load), increment and check limit
-        if (query || ward) {
-          if (currentCount >= limit) {
-            const code = role === 'guest' ? 'QUOTA_EXCEEDED_GUEST' : 'QUOTA_EXCEEDED_PUBLIC';
-            return NextResponse.json({ success: false, error: 'Daily search limit exceeded.', code }, { status: 429 });
-          }
-          try {
-            await authDb.run('UPDATE public_limits SET search_count = search_count + 1 WHERE ip = ?', [clientIdentifier]);
-          } catch (dbErr) {
-            console.error("Failed to update rate limit (locked). Ignoring.", dbErr);
-          }
+        try {
+          await authDb.run('UPDATE public_limits SET search_count = search_count + 1 WHERE ip = ?', [clientIdentifier]);
+        } catch (dbErr) {
+          console.error("Failed to update rate limit in DB:", dbErr);
         }
       } finally {
         await authDb.close();
@@ -116,20 +166,16 @@ export async function GET(request: Request) {
     if (role === 'paid') {
       const allowed = session?.user?.allowed_wards;
       if (allowed === 'all') {
-        // Allowed all wards, leave array empty
+        // Allowed all wards
       } else if (allowed && allowed.trim() !== '') {
         allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
-        // If a specific ward was requested, verify it's in the allowed list
         if (ward && !allowedArr.includes(parseInt(ward, 10))) {
           return NextResponse.json({ success: false, error: 'Forbidden ward access' }, { status: 403 });
         }
       } else {
-        // If they are a paid user but have an empty allowed_wards field, lock them out!
         return NextResponse.json({ success: false, error: 'Your account has not been assigned to any wards. Please contact the administrator.' }, { status: 403 });
       }
     } else if (role === 'user' || role === 'guest') {
-      // For free guests, if they have a specific ward restriction, apply it.
-      // Otherwise, they are allowed to search all wards (bounded by their rate limit).
       const allowed = session?.user?.allowed_wards;
       if (allowed && allowed !== 'all' && allowed.trim() !== '') {
         allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
@@ -190,16 +236,14 @@ export async function GET(request: Request) {
       };
 
       if (query) {
-        const isPublic = role !== 'admin' && role !== 'paid';
-
         if (type === 'voter_id') {
           const upperQuery = query.toUpperCase();
-          const sqlParam = isPublic ? upperQuery : `%${upperQuery}%`;
+          const sqlParam = !isPrivileged ? upperQuery : `%${upperQuery}%`;
           const baseSql = `SELECT * FROM voters WHERE voter_id LIKE ? ${wardClause}`;
           const countSql = `SELECT COUNT(*) as total FROM voters WHERE voter_id LIKE ? ${wardClause}`;
           voters = await executePaginatedSql(baseSql, countSql, [sqlParam, ...wardParam]);
         } else if (type === 'house') {
-          const sqlParam = isPublic ? query : `%${query}%`;
+          const sqlParam = !isPrivileged ? query : `%${query}%`;
           const baseSql = `SELECT * FROM voters WHERE house_number LIKE ? ${wardClause}`;
           const countSql = `SELECT COUNT(*) as total FROM voters WHERE house_number LIKE ? ${wardClause}`;
           voters = await executePaginatedSql(baseSql, countSql, [sqlParam, ...wardParam]);
@@ -223,7 +267,7 @@ export async function GET(request: Request) {
             const Fuse = (await import('fuse.js')).default;
             const fuse = new Fuse(allVotersForWard, {
               keys: [searchField],
-              threshold: 0.2, // Strict threshold
+              threshold: 0.2,
               ignoreLocation: true,
             });
 
@@ -232,7 +276,7 @@ export async function GET(request: Request) {
           }
         }
       } else {
-        // If no query, just return a few recent ones, respecting ward
+        // Only privileged users (Admins / Paid Assigned) can browse without a query
         let baseSql = `SELECT * FROM voters`;
         let countSql = `SELECT COUNT(*) as total FROM voters`;
         let params: any[] = [];
@@ -251,15 +295,16 @@ export async function GET(request: Request) {
         voters = await executePaginatedSql(baseSql, countSql, params);
       }
 
-      // Mask voter ID for public and unpaid users
-      if (role !== 'admin' && role !== 'paid') {
+      // Anti-Scraping / Privacy: Mask Voter ID and strip internal DB row IDs for non-privileged users
+      if (!isPrivileged) {
         voters = voters.map((voter: any) => {
+          const { id, ...safeRecord } = voter;
+          let maskedId = '***';
           if (voter.voter_id && voter.voter_id.length > 4) {
             const v = voter.voter_id;
-            const maskedId = v.substring(0, 3) + '****' + v.substring(v.length - 3);
-            return { ...voter, voter_id: maskedId };
+            maskedId = v.substring(0, 3) + '****' + v.substring(v.length - 3);
           }
-          return { ...voter, voter_id: '***' };
+          return { ...safeRecord, voter_id: maskedId };
         });
       }
 

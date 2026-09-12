@@ -36,8 +36,6 @@ Designed directly from ground feedback at polling stations:
   * Instant filter for "Unvoted Voters" to coordinate neighborhood turnout reminders.
 * **Gali & Block Filter (`/house`)**:
   * Groups voters into physical street batches (Gali 1, 2, 3...) for door-to-door booth mobilization.
-* **Polling Duty Lookup (`/duty`)**:
-  * Quick search for government officers and volunteers assigned to duty at specific booths.
 
 ---
 
