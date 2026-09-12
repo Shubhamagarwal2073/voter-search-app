@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import Head from "next/head";
@@ -18,6 +20,25 @@ export default function LegalPage() {
       ></div>
 
       <div className="max-w-4xl mx-auto relative z-10">
+        <div className="flex justify-between items-center pb-3 mb-6 border-b border-[#1E2A42]/20 font-['Courier_Prime'] text-xs">
+          <button 
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.location.href = "/";
+              }
+            }}
+            className="font-bold text-[#1E2A42] hover:text-[#A2382B] flex items-center gap-1.5 transition-colors cursor-pointer bg-transparent border-0"
+          >
+            ← RETURN TO SEARCH / मुख्य पृष्ठ
+          </button>
+          <Link href="/" className="text-[#A2382B] font-bold underline">
+            SEARCH HOME
+          </Link>
+        </div>
+
         <div className="border-b-4 border-double border-[#1E2A42] pb-6 mb-12">
           <h1 className="text-4xl md:text-5xl font-['Fraunces'] font-semibold italic text-[#1E2A42] mb-4">
             Legal <span className="text-[#A2382B] font-normal">&amp;</span> Notices
@@ -79,9 +100,19 @@ export default function LegalPage() {
         </div>
 
         <div className="mt-16 pt-8 border-t-[3px] border-double border-[#1E2A42] flex justify-between items-center flex-wrap gap-4">
-          <Link href="/" className="font-['Courier_Prime'] text-sm font-bold text-[#1E2A42] hover:text-[#A2382B] border-b-[1.5px] border-[#1E2A42] hover:border-[#A2382B] pb-[2px] transition-colors">
+          <button 
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.location.href = "/";
+              }
+            }}
+            className="font-['Courier_Prime'] text-sm font-bold text-[#1E2A42] hover:text-[#A2382B] border-b-[1.5px] border-[#1E2A42] hover:border-[#A2382B] pb-[2px] transition-colors bg-transparent border-0 cursor-pointer"
+          >
             &larr; RETURN TO SEARCH
-          </Link>
+          </button>
           <div className="font-['Courier_Prime'] text-xs text-[#6B6944]">
             LAST UPDATED: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
           </div>

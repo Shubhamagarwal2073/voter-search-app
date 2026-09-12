@@ -452,6 +452,25 @@ export default function AboutPage() {
       ` }} />
 
       <div className="iws-wrap">
+        <div style={{ padding: "14px 0", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px dashed var(--line)", marginBottom: "20px", fontFamily: "'Courier Prime', monospace", fontSize: "13px" }}>
+          <button 
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.location.href = "/";
+              }
+            }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--navy)", fontWeight: "bold", display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            ← RETURN TO SEARCH / मुख्य पृष्ठ
+          </button>
+          <Link href="/" style={{ color: "var(--stamp)", fontWeight: "bold", textDecoration: "underline" }}>
+            SEARCH HOME
+          </Link>
+        </div>
+
         <header className="letterhead">
           <div className="row">
             <div className="brandmark">
@@ -657,6 +676,21 @@ export default function AboutPage() {
         </section>
 
         <footer>
+          <div style={{ marginBottom: "16px" }}>
+            <button 
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined" && window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  window.location.href = "/";
+                }
+              }}
+              style={{ background: "var(--navy)", color: "var(--paper)", border: "none", padding: "8px 18px", cursor: "pointer", fontFamily: "'Courier Prime', monospace", fontSize: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}
+            >
+              ← Return to Main Screen
+            </button>
+          </div>
           <div className="fine">
             <strong>Imposter World Services</strong> — filed by Shubham Agrawal.<br />
             No board, no shareholders, no objections raised.

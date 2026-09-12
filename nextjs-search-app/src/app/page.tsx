@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { ReactTransliterate } from 'react-transliterate';
 import 'react-transliterate/dist/index.css';
 import DatabaseStatsModal from '@/components/DatabaseStatsModal';
@@ -567,12 +568,12 @@ export default function Home() {
           
           {/* Links */}
           <div className="flex-1 flex flex-col items-start md:items-end gap-3 font-bold tracking-widest uppercase text-xs pt-2">
-            <a href="/about" target="_blank" rel="noopener noreferrer" className="text-[#1E2A42] hover:text-[#A2382B] transition-colors border-b border-transparent hover:border-[#A2382B]">
+            <Link href="/about" className="text-[#1E2A42] hover:text-[#A2382B] transition-colors border-b border-transparent hover:border-[#A2382B]">
               About Platform
-            </a>
-            <a href="/legal" target="_blank" rel="noopener noreferrer" className="text-[#1E2A42] hover:text-[#A2382B] transition-colors border-b border-transparent hover:border-[#A2382B]">
+            </Link>
+            <Link href="/legal" className="text-[#1E2A42] hover:text-[#A2382B] transition-colors border-b border-transparent hover:border-[#A2382B]">
               Legal & Notices
-            </a>
+            </Link>
           </div>
           
         </div>
