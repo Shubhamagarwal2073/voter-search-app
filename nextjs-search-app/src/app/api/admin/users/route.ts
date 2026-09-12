@@ -16,6 +16,14 @@ async function openLocalDb() {
   });
 }
 
+function getNeonClient() {
+  const { Client } = require('pg');
+  return new Client({
+    connectionString: process.env.NEON_DATABASE_URL,
+    ssl: true
+  });
+}
+
 // Defense-in-depth: Strict admin verification directly in the API handler
 async function verifyAdmin() {
   const session: any = await getServerSession(authOptions);
@@ -78,11 +86,7 @@ export async function PUT(request: Request) {
     if (syncToNeon) {
       try {
         if (process.env.NEON_DATABASE_URL) {
-          const { Client } = require('pg');
-          const client = new Client({
-            connectionString: process.env.NEON_DATABASE_URL,
-            ssl: { rejectUnauthorized: false }
-          });
+          const client = getNeonClient();
           
           await client.connect();
           await client.query(
@@ -153,11 +157,7 @@ export async function POST(request: Request) {
     if (syncToNeon) {
       try {
         if (process.env.NEON_DATABASE_URL) {
-          const { Client } = require('pg');
-          const client = new Client({
-            connectionString: process.env.NEON_DATABASE_URL,
-            ssl: { rejectUnauthorized: false }
-          });
+          const client = getNeonClient();
           
           await client.connect();
           await client.query(
@@ -216,11 +216,7 @@ export async function DELETE(req: Request) {
     
     try {
       if (process.env.NEON_DATABASE_URL && email) {
-        const { Client } = require('pg');
-        const client = new Client({
-          connectionString: process.env.NEON_DATABASE_URL,
-          ssl: { rejectUnauthorized: false }
-        });
+        const client = getNeonClient();
         
         await client.connect();
         await client.query("DELETE FROM users WHERE email = $1", [email]);

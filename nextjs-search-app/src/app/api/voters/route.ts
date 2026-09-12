@@ -261,18 +261,47 @@ export async function GET(request: Request) {
             const baseSql = `SELECT * FROM voters WHERE ${searchField} LIKE ? ${wardClause}`;
             voters = await executePaginatedSql(baseSql, countSql, [exactQuery, ...wardParam]);
           } else {
-            const allVotersQuery = `SELECT * FROM voters ${wardClause ? 'WHERE ' + wardClause.replace('AND ', '') : ''}`;
-            const allVotersForWard = await db.all(allVotersQuery, wardParam);
+            // Memory-Safe Unique Names Fuzzy Fallback:
+            // Query only distinct names (~150KB) instead of pulling 50,000 full database objects into RAM
+            const condition = wardClause ? `${wardClause.replace(/^AND\s+/i, '')} AND ${searchField} IS NOT NULL` : `${searchField} IS NOT NULL`;
+            const uniqueNamesQuery = `SELECT DISTINCT ${searchField} as name FROM voters WHERE ${condition}`;
+            const uniqueNameRows = await db.all(uniqueNamesQuery, wardParam);
+            const uniqueNames = uniqueNameRows.map((r: any) => r.name).filter(Boolean);
 
-            const Fuse = (await import('fuse.js')).default;
-            const fuse = new Fuse(allVotersForWard, {
-              keys: [searchField],
-              threshold: 0.2,
-              ignoreLocation: true,
-            });
+            if (uniqueNames.length === 0) {
+              voters = [];
+              totalItems = 0;
+              totalPages = 0;
+              currentPage = 1;
+            } else {
+              const FuseModule: any = await import('fuse.js');
+              const Fuse = FuseModule.default || FuseModule;
+              const fuse = new Fuse(uniqueNames, {
+                threshold: 0.25,
+                ignoreLocation: true,
+              });
 
-            const fuzzyResults = fuse.search(query).map(result => result.item);
-            voters = applyFuzzyPagination(fuzzyResults);
+              const matchedResults = fuse.search(query);
+              if (matchedResults.length > 0) {
+                // Take top matched candidate names (up to top 5)
+                const topMatchedNames = matchedResults.slice(0, 5).map((r: any) => r.item);
+                const inPlaceholders = topMatchedNames.map(() => '?').join(',');
+                
+                // Rank results so the #1 closest fuzzy match appears first
+                const orderCase = `ORDER BY CASE ${searchField} ` + 
+                  topMatchedNames.map((name: string, idx: number) => `WHEN '${name.replace(/'/g, "''")}' THEN ${idx}`).join(' ') + 
+                  ` ELSE ${topMatchedNames.length} END ASC`;
+
+                const baseSql = `SELECT * FROM voters WHERE ${searchField} IN (${inPlaceholders}) ${wardClause} ${orderCase}`;
+                const countSql = `SELECT COUNT(*) as total FROM voters WHERE ${searchField} IN (${inPlaceholders}) ${wardClause}`;
+                voters = await executePaginatedSql(baseSql, countSql, [...topMatchedNames, ...wardParam]);
+              } else {
+                voters = [];
+                totalItems = 0;
+                totalPages = 0;
+                currentPage = 1;
+              }
+            }
           }
         }
       } else {
