@@ -287,47 +287,57 @@ def clean_voter_record(raw_voter: dict, page_num: int, ward: int = None, source_
     wait=wait_exponential(multiplier=2, min=2, max=60),
     stop=stop_after_attempt(5)
 )
+@retry(
+    retry=retry_if_exception_type((APIError, ClientError)),
+    wait=wait_exponential(multiplier=2, min=5, max=60),
+    stop=stop_after_attempt(5),
+    reraise=True
+)
+def _call_gemini_with_retry(client, model, contents, config):
+    return client.models.generate_content(
+        model=model,
+        contents=contents,
+        config=config
+    )
+
 def extract_from_chunk(client, pdf_path: str, start_page: int, end_page: int) -> list:
     """
     High-accuracy full-page extraction using Gemini 2.5 Flash.
     Extracts complete cards without bisecting grid rows.
+    Automatically handles 429 rate limit errors with exponential backoff.
     """
     with open(pdf_path, 'rb') as f:
         pdf_bytes = f.read()
 
     prompt = BASE_PROMPT + f"\nProcess page number {start_page}."
     
-    response = client.models.generate_content(
-        model=get_model_name(),
-        contents=[
-            types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
-            prompt
-        ],
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=RESPONSE_SCHEMA,
-            temperature=0.0
-        )
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=RESPONSE_SCHEMA,
+        temperature=0.0
     )
+    contents = [
+        types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
+        prompt
+    ]
 
+    response = _call_gemini_with_retry(client, get_model_name(), contents, config)
     raw_voters = safe_parse_json(response.text)
     
     # If extraction is empty or suspiciously low (< 10) on a non-header page, retry once with explicit layout instruction
     if len(raw_voters) < 10 and start_page > 2:
         print(f"  [Notice] Page {start_page} returned {len(raw_voters)} voters. Running precision retry...")
         retry_prompt = prompt + "\nImportant: Read all 3 columns from top to bottom. Do not miss any boxes."
-        retry_response = client.models.generate_content(
-            model=get_model_name(),
-            contents=[
-                types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
-                retry_prompt
-            ],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=RESPONSE_SCHEMA,
-                temperature=0.1
-            )
+        retry_config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=RESPONSE_SCHEMA,
+            temperature=0.1
         )
+        retry_contents = [
+            types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
+            retry_prompt
+        ]
+        retry_response = _call_gemini_with_retry(client, get_model_name(), retry_contents, retry_config)
         retry_voters = safe_parse_json(retry_response.text)
         if len(retry_voters) > len(raw_voters):
             raw_voters = retry_voters

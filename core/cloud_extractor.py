@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
 sys.path.append(os.path.dirname(__file__))
 from extractor import extract_from_chunk, clean_voter_record
-from ai_config import get_genai_client
+from ai_config import get_genai_client, get_recommended_workers
 
 INPUT_BUCKET_NAME = os.environ.get("INPUT_BUCKET", "ocr-voter-lists-input")
 OUTPUT_BUCKET_NAME = os.environ.get("OUTPUT_BUCKET", "ocr-voter-lists-output")
@@ -22,11 +22,13 @@ def is_likely_summary_page(page_num: int, total_pages: int, voter_count: int) ->
     """Detects if the final page is an aggregate summary table rather than voter cards."""
     return page_num == total_pages and voter_count == 0 and total_pages > 3
 
-def process_pdf_in_memory(pdf_path: str, source_filename: str, client, start_page: int = 3, max_workers: int = 5) -> list:
+def process_pdf_in_memory(pdf_path: str, source_filename: str, client, start_page: int = 3, max_workers: int = None) -> list:
     """
-    Extracts all pages concurrently with ThreadPoolExecutor (max_workers=5),
-    applies full cleaning & stamp/prefix normalization, and returns all voter records.
+    Extracts all pages concurrently with ThreadPoolExecutor.
+    Automatically scales worker count based on Vertex AI vs AI Studio limits.
     """
+    if max_workers is None:
+        max_workers = get_recommended_workers()
     reader = PdfReader(pdf_path)
     total_pdf_pages = len(reader.pages)
     
@@ -156,10 +158,10 @@ def process_blob(target_blob, input_bucket, output_bucket, client, start_page: i
             except OSError:
                 pass
 
-def main():
+    default_workers = get_recommended_workers()
     parser = argparse.ArgumentParser(description="Robust Cloud OCR Extractor for Electoral Roll PDFs.")
     parser.add_argument("--start-page", type=int, default=3, help="Page to start extraction from (default: 3, skipping cover pages).")
-    parser.add_argument("--workers", type=int, default=5, help="Number of concurrent worker threads per PDF (default: 5).")
+    parser.add_argument("--workers", type=int, default=default_workers, help=f"Number of concurrent worker threads per PDF (default: {default_workers}).")
     parser.add_argument("--file", type=str, default=None, help="Process a specific local or GCS PDF filename directly.")
     parser.add_argument("--all-queue", action="store_true", help="Process all PDFs in the queue folder sequentially.")
     args = parser.parse_args()
