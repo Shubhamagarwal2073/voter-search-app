@@ -1,18 +1,6 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
-import path from 'path';
-
-// Store DB inside Next.js data folder
-const dbPath = path.resolve(process.cwd(), 'data', 'auth.db');
-
-async function getAuthDb() {
-  return open({
-    filename: dbPath,
-    driver: sqlite3.Database
-  });
-}
+import { getAuthDb } from "@/lib/db";
 
 export const authOptions: any = {
   providers: [
@@ -35,7 +23,6 @@ export const authOptions: any = {
           await db.run(`INSERT INTO users (email, role, allowed_wards) VALUES (?, ?, ?)`, [emailLower, role, allowed_wards]);
         }
 
-        await db.close();
         return true; // We now allow everyone who has a valid Google account to log in!
       }
       return false;
@@ -45,7 +32,6 @@ export const authOptions: any = {
         const emailLower = token.email.toLowerCase();
         const db = await getAuthDb();
         const existingUser = await db.get(`SELECT * FROM users WHERE email = ?`, [emailLower]);
-        await db.close();
         if (existingUser) {
           token.role = existingUser.role;
           token.allowed_wards = existingUser.allowed_wards;

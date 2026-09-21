@@ -1,17 +1,9 @@
 import { NextResponse } from 'next/server';
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
-import path from 'path';
+import { getVotersDb, getAuthDb } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 
 export const dynamic = 'force-dynamic';
-
-// Store DB inside Next.js data folder so Vercel can deploy it
-const dbPath = path.resolve(process.cwd(), 'data', 'voters.db');
-
-// Path to auth DB for rate limiting
-const authDbPath = path.resolve(process.cwd(), 'data', 'auth.db');
 
 // Simple in-memory rate limiter for Admins (25 requests per minute per IP)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -118,10 +110,8 @@ export async function GET(request: Request) {
       const userAgent = request.headers.get('user-agent') || 'unknown_ua';
       const clientIdentifier = `${ip}|${userAgent}`;
 
-      const authDb = await open({ filename: authDbPath, driver: sqlite3.Database });
+      const authDb = await getAuthDb();
       try {
-        await authDb.exec('PRAGMA journal_mode = WAL;');
-        await authDb.exec('PRAGMA synchronous = NORMAL;');
         await authDb.run('CREATE TABLE IF NOT EXISTS public_limits (ip TEXT PRIMARY KEY, search_count INTEGER, last_reset INTEGER)');
 
         const ipRecord = await authDb.get('SELECT * FROM public_limits WHERE ip = ?', [clientIdentifier]);
@@ -154,8 +144,8 @@ export async function GET(request: Request) {
         } catch (dbErr) {
           console.error("Failed to update rate limit in DB:", dbErr);
         }
-      } finally {
-        await authDb.close();
+      } catch (authErr) {
+        console.error("Auth DB rate limit error:", authErr);
       }
     }
     // --- END RATE LIMITING ---
@@ -185,10 +175,7 @@ export async function GET(request: Request) {
       }
     }
 
-    const db = await open({
-      filename: dbPath,
-      driver: sqlite3.Database
-    });
+    const db = await getVotersDb();
 
     try {
       let voters = [];
@@ -262,11 +249,29 @@ export async function GET(request: Request) {
             voters = await executePaginatedSql(baseSql, countSql, [exactQuery, ...wardParam]);
           } else {
             // Memory-Safe Unique Names Fuzzy Fallback:
-            // Query only distinct names (~150KB) instead of pulling 50,000 full database objects into RAM
+            // Query only distinct names instead of pulling 50,000 full database objects into RAM
             const condition = wardClause ? `${wardClause.replace(/^AND\s+/i, '')} AND ${searchField} IS NOT NULL` : `${searchField} IS NOT NULL`;
-            const uniqueNamesQuery = `SELECT DISTINCT ${searchField} as name FROM voters WHERE ${condition}`;
-            const uniqueNameRows = await db.all(uniqueNamesQuery, wardParam);
-            const uniqueNames = uniqueNameRows.map((r: any) => r.name).filter(Boolean);
+            
+            // Optimization: If searching globally across all 55 wards, prune candidate names by prefix
+            // to avoid loading 15,000+ unique strings into Node.js memory.
+            let uniqueNamesQuery = `SELECT DISTINCT ${searchField} as name FROM voters WHERE ${condition}`;
+            let queryParams = [...wardParam];
+            
+            if (!ward && query.length >= 1) {
+              uniqueNamesQuery += ` AND ${searchField} LIKE ?`;
+              queryParams.push(`${query[0]}%`);
+            }
+            uniqueNamesQuery += ` LIMIT 1500`;
+
+            const uniqueNameRows = await db.all(uniqueNamesQuery, queryParams);
+            let uniqueNames = uniqueNameRows.map((r: any) => r.name).filter(Boolean);
+
+            // Fallback: if prefix produced 0 candidates and query is longer than 1 char, try without prefix up to 1000
+            if (uniqueNames.length === 0 && !ward) {
+              const fallbackQuery = `SELECT DISTINCT ${searchField} as name FROM voters WHERE ${condition} LIMIT 1000`;
+              const fallbackRows = await db.all(fallbackQuery, wardParam);
+              uniqueNames = fallbackRows.map((r: any) => r.name).filter(Boolean);
+            }
 
             if (uniqueNames.length === 0) {
               voters = [];
@@ -347,9 +352,6 @@ export async function GET(request: Request) {
           limit
         }
       });
-    } finally {
-      await db.close();
-    }
 
   } catch (error: any) {
     console.error('Database error:', error);

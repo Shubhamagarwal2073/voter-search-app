@@ -29,9 +29,6 @@ export default function AdminDashboard() {
   const [formRole, setFormRole] = useState("user");
   const [formWards, setFormWards] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // App Settings
-  const [syncToCloud, setSyncToCloud] = useState(true);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -89,11 +86,7 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete user");
-      if (data.neonFailed) {
-        setError(data.message);
-      } else {
-        setSuccess("User deleted successfully!");
-      }
+      setSuccess("User deleted successfully!");
       fetchUsers();
     } catch (err: any) {
       setError(err.message);
@@ -114,8 +107,7 @@ export default function AdminDashboard() {
         name: formName.trim(),
         email: formEmail.trim().toLowerCase(),
         role: formRole,
-        allowed_wards: formWards.trim(),
-        syncToNeon: syncToCloud
+        allowed_wards: formWards.trim()
       };
       
       const res = await fetch("/api/admin/users", {
@@ -128,13 +120,8 @@ export default function AdminDashboard() {
       
       if (!res.ok) throw new Error(data.error || "Failed to save user");
       
-      if (data.neonFailed) {
-        setError(data.message);
-      } else {
-        setSuccess("User saved successfully!");
-        setIsDrawerOpen(false);
-      }
-      
+      setSuccess("User saved successfully!");
+      setIsDrawerOpen(false);
       fetchUsers();
     } catch (err: any) {
       setError(err.message);
@@ -209,25 +196,6 @@ export default function AdminDashboard() {
             </div>
         )}
 
-        {/* Sync Feature Card */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6 mb-8 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-4">
-             <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600">
-               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
-             </div>
-             <div>
-                <h3 className="text-lg font-semibold text-slate-900">Cloud Backup Synchronization</h3>
-                <p className="text-sm text-slate-500 mt-1">Automatically push auth user delta changes to the secure Neon cloud vault.</p>
-             </div>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer select-none group">
-             <input type="checkbox" checked={syncToCloud} onChange={(e) => setSyncToCloud(e.target.checked)} className="sr-only peer" />
-             <div className={`w-14 h-7 rounded-full transition-colors relative ${syncToCloud ? 'bg-[#00F5FF]' : 'bg-slate-300'}`} style={syncToCloud ? { boxShadow: '0 0 10px #00F5FF, 0 0 20px #00F5FF, inset 0 0 5px #00F5FF', borderColor: '#00F5FF' } : {}}>
-                <div className={`absolute top-[2px] left-[2px] bg-white rounded-full h-6 w-6 transition-transform shadow-md ${syncToCloud ? 'translate-x-7' : 'translate-x-0'}`}></div>
-             </div>
-             <span className="ml-3 text-sm font-semibold text-slate-700">Neon Sync</span>
-          </label>
-        </div>
 
         {/* Data Table */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
