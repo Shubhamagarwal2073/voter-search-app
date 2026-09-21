@@ -10,9 +10,7 @@ sys.path.append(os.path.dirname(__file__))
 from cloud_extractor import process_blob
 from database import get_connection, insert_voters
 from recheck import run_recheck
-
-from google import genai
-import google.auth
+from ai_config import get_genai_client, get_model_name
 
 ARCHIVE_BUCKET_NAME = "ocr-voter-lists-archive"
 INPUT_BUCKET_NAME = os.environ.get("INPUT_BUCKET", "ocr-voter-lists-input")
@@ -132,8 +130,7 @@ def main():
 
     # 1. Initialize Gemini Client
     try:
-        credentials, project_id = google.auth.default()
-        client = genai.Client(vertexai=True, project=project_id, location='us-central1')
+        client = get_genai_client()
     except Exception as e:
         print(f"Authentication error: {e}")
         return

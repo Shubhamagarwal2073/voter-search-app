@@ -16,8 +16,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import google.auth
 from google.auth.exceptions import DefaultCredentialsError
 
-# Local database operations
+# Local database and AI configuration
 from database import init_db, insert_voters, get_connection
+from ai_config import get_model_name, get_genai_client
 
 # Response schema for structured output
 RESPONSE_SCHEMA = types.Schema(
@@ -297,7 +298,7 @@ def extract_from_chunk(client, pdf_path: str, start_page: int, end_page: int) ->
     prompt = BASE_PROMPT + f"\nProcess page number {start_page}."
     
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model=get_model_name(),
         contents=[
             types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
             prompt
@@ -316,7 +317,7 @@ def extract_from_chunk(client, pdf_path: str, start_page: int, end_page: int) ->
         print(f"  [Notice] Page {start_page} returned {len(raw_voters)} voters. Running precision retry...")
         retry_prompt = prompt + "\nImportant: Read all 3 columns from top to bottom. Do not miss any boxes."
         retry_response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model=get_model_name(),
             contents=[
                 types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
                 retry_prompt
@@ -351,13 +352,10 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
         return []
 
     try:
-        credentials, project_id = google.auth.default()
-        print(f"Authenticated via Google Cloud. Project ID: {project_id}")
-    except DefaultCredentialsError:
-        print("ERROR: Google Cloud Credentials not found. Run: gcloud auth application-default login")
+        client = get_genai_client()
+    except Exception as e:
+        print(f"ERROR: Could not initialize AI client: {e}")
         return []
-
-    client = genai.Client(vertexai=True, project=project_id, location='us-central1')
     reader = PdfReader(pdf_path)
     total_pdf_pages = len(reader.pages)
     actual_end_page = end_page_arg if end_page_arg is not None else total_pdf_pages

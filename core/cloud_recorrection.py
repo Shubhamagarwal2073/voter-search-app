@@ -11,10 +11,7 @@ from extractor import extract_from_chunk
 from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from google.genai.errors import APIError
-
-import google.auth
-from google.auth.exceptions import DefaultCredentialsError
-from google import genai
+from ai_config import get_model_name, get_genai_client
 
 @retry(
     retry=retry_if_exception_type(APIError),
@@ -49,7 +46,7 @@ def extract_sample_from_crop(client, pdf_path, page_num):
     """
 
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model=get_model_name(),
         contents=[
             types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
             prompt
@@ -233,10 +230,9 @@ def main():
     print(f"Task Index: {task_index}")
 
     try:
-        credentials, project_id = google.auth.default()
-        client = genai.Client(vertexai=True, project=project_id, location='us-central1')
-    except DefaultCredentialsError:
-        print("ERROR: Google Cloud Credentials not found.")
+        client = get_genai_client()
+    except Exception as e:
+        print(f"ERROR: Could not initialize AI client: {e}")
         return
 
     storage_client = storage.Client()

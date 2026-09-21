@@ -12,10 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
 sys.path.append(os.path.dirname(__file__))
 from extractor import extract_from_chunk, clean_voter_record
-
-import google.auth
-from google.auth.exceptions import DefaultCredentialsError
-from google import genai
+from ai_config import get_genai_client
 
 INPUT_BUCKET_NAME = os.environ.get("INPUT_BUCKET", "ocr-voter-lists-input")
 OUTPUT_BUCKET_NAME = os.environ.get("OUTPUT_BUCKET", "ocr-voter-lists-output")
@@ -170,10 +167,9 @@ def main():
     print("Starting Cloud OCR Extractor Pipeline...")
 
     try:
-        credentials, project_id = google.auth.default()
-        client = genai.Client(vertexai=True, project=project_id, location='us-central1')
-    except DefaultCredentialsError:
-        print("ERROR: Google Cloud Credentials not found. Run: gcloud auth application-default login")
+        client = get_genai_client()
+    except Exception as e:
+        print(f"ERROR: Could not initialize AI client: {e}")
         return
 
     storage_client = storage.Client()

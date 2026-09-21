@@ -245,9 +245,7 @@ if sys.platform == "win32":
 # Core modules
 from extractor import extract_from_chunk, clean_voter_record
 from database import get_connection
-from google import genai
-import google.auth
-from google.auth.exceptions import DefaultCredentialsError
+from ai_config import get_genai_client
 
 TARGET_PAGES = {formatted_dict}
 
@@ -257,11 +255,9 @@ def rescan_and_heal():
     print("=" * 60)
 
     try:
-        credentials, project_id = google.auth.default()
-        client = genai.Client(vertexai=True, project=project_id, location='us-central1')
-        print(f"Authenticated with Vertex AI. Project: {{project_id}}")
-    except DefaultCredentialsError:
-        print("❌ Error: GCP credentials not found. Run: gcloud auth application-default login")
+        client = get_genai_client()
+    except Exception as e:
+        print(f"❌ Error initializing AI client: {{e}}")
         return
 
     base_dir = os.path.dirname(os.path.dirname(__file__))
