@@ -39,12 +39,26 @@ def init_db():
         print(f"Error initializing database: {e}")
 
 def insert_voters(voters_list: list):
-    """Inserts a list of voter dictionaries into the database."""
+    """Inserts a list of voter dictionaries into the database, or deletes them if marked deleted/shifted."""
     inserted_count = 0
+    deleted_count = 0
     with get_connection() as conn:
         cursor = conn.cursor()
         for voter in voters_list:
             try:
+                # Handle deleted/shifted voters by removing from DB
+                if voter.get('is_deleted_or_shifted'):
+                    v_id = voter.get('voter_id')
+                    w = voter.get('ward')
+                    sn = voter.get('serial_number')
+                    if v_id and not str(v_id).startswith("TEMP_ID"):
+                        cursor.execute('DELETE FROM voters WHERE voter_id = ?', (v_id,))
+                    elif w is not None and sn is not None:
+                        cursor.execute('DELETE FROM voters WHERE ward = ? AND serial_number = ?', (w, sn))
+                    if cursor.rowcount > 0:
+                        deleted_count += 1
+                    continue
+
                 cursor.execute('''
                     INSERT INTO voters 
                     (ward, serial_number, voter_id, name_hi, relative_name_hi, relative_type, house_number, age, gender, page_number, source_file)
@@ -78,7 +92,7 @@ def insert_voters(voters_list: list):
                 print(f"Error inserting {voter.get('voter_id')}: {e}")
                 
         conn.commit()
-    print(f"Successfully processed {inserted_count} voters.")
+    print(f"Successfully processed {inserted_count} active voters (removed {deleted_count} deleted/shifted records).")
     return inserted_count
 
 if __name__ == '__main__':

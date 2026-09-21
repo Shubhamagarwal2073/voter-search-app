@@ -135,6 +135,33 @@ def safe_parse_json(text: str) -> list:
             
     return []
 
+DEV_NUM_MAP = str.maketrans('०१२३४५६७८९', '0123456789')
+
+# Comprehensive prefix stripping patterns
+NAME_LABEL_PREFIX_PATTERN = re.compile(
+    r'^(?:'
+    r'नाम|मतदाता\s*(?:का\s*)?नाम|निर्वाचक\s*(?:का\s*)?नाम|'
+    r'पिता\s*(?:का\s*)?नाम|पति\s*(?:का\s*)?नाम|माता\s*(?:का\s*)?नाम|'
+    r'संरक्षक\s*(?:का\s*)?नाम|अभिभावक\s*(?:का\s*)?नाम|'
+    r'पिता|पति|माता|अन्य|'
+    r'Name|Father\'?s?\s*Name|Husband\'?s?\s*Name|Mother\'?s?\s*Name|Guardian\'?s?\s*Name'
+    r')\s*[:\-।./]*\s*',
+    re.IGNORECASE
+)
+
+HOUSE_PREFIX_PATTERN = re.compile(
+    r'^(?:'
+    r'मकान\s*(?:नं[०.]?|संख्या)?|म\.\s*नं[०.]?|गृह\s*संख्या|घर\s*नं[०.]?|'
+    r'House\s*(?:No\.?|Number)?|H\.?\s*No\.?'
+    r')\s*[:\-।./]*\s*',
+    re.IGNORECASE
+)
+
+DELETED_STAMP_PATTERN = re.compile(
+    r'(?:DELETED|SHIFTED|EXPIRED|REPEATED|विलोपित|निरस्त|रद्द|हटाया\s*गया)',
+    re.IGNORECASE
+)
+
 def clean_hindi_text(text: str) -> str:
     """Normalizes Unicode (NFC), heals disjoint spaced letters, and strips label prefixes."""
     if not text:
@@ -158,20 +185,27 @@ def clean_hindi_text(text: str) -> str:
         healed_tokens.append(buffer)
     text = " ".join(healed_tokens)
     
-    # 3. Strip OCR label prefixes
-    text = re.sub(r'^(?:नाम|मतदाता\s*का\s*नाम|पिता\s*का\s*नाम|पति\s*का\s*नाम|माता\s*का\s*नाम|पिता|पति|माता)\s*[:\-।.]?\s*', '', text).strip()
+    # 3. Strip OCR label prefixes (both Hindi & English)
+    text = NAME_LABEL_PREFIX_PATTERN.sub('', text).strip()
+    # Strip any trailing colons or punctuation
+    text = re.sub(r'[:\-।./]+$', '', text).strip()
     return text
 
 def clean_voter_record(raw_voter: dict, page_num: int, ward: int = None, source_file: str = "") -> dict:
-    """Sanitizes, normalizes, and validates a raw voter dictionary."""
+    """Sanitizes, normalizes, and validates a raw voter dictionary with strict stamp and prefix checking."""
     is_deleted = bool(raw_voter.get('is_deleted_or_shifted', False))
     
     # Clean Serial Number
     raw_sn = str(raw_voter.get('serial_number') or '').strip().upper()
-    for prefix in ('S', 'E', 'R', 'Q', 'DEL'):
+    # Translate Devanagari numerals if present
+    raw_sn = raw_sn.translate(DEV_NUM_MAP)
+    
+    # Check for deletion / shift prefixes in serial number
+    for prefix in ('S', 'E', 'R', 'Q', 'DEL', 'DELETED', 'SHIFTED', 'विलोपित', 'निरस्त'):
         if raw_sn.startswith(prefix):
             is_deleted = True
-            raw_sn = raw_sn.replace(prefix, '').strip('-: ')
+            raw_sn = raw_sn[len(prefix):].strip('-: /')
+            break
             
     digits_match = re.search(r'\d+', raw_sn)
     clean_sn = int(digits_match.group(0)) if digits_match else None
@@ -179,6 +213,13 @@ def clean_voter_record(raw_voter: dict, page_num: int, ward: int = None, source_
     # Clean Hindi Name & Relative Name with Unicode NFC & Matra healing
     name_hi = clean_hindi_text(str(raw_voter.get('name_hi') or ''))
     rel_name_hi = clean_hindi_text(str(raw_voter.get('relative_name_hi') or ''))
+    
+    # Check for deletion stamps in name or voter_id fields
+    voter_id_raw = str(raw_voter.get('voter_id') or '').strip()
+    if DELETED_STAMP_PATTERN.search(name_hi) or DELETED_STAMP_PATTERN.search(voter_id_raw):
+        is_deleted = True
+        name_hi = DELETED_STAMP_PATTERN.sub('', name_hi).strip()
+        voter_id_raw = DELETED_STAMP_PATTERN.sub('', voter_id_raw).strip()
     
     # Clean Relative Type
     rel_type = str(raw_voter.get('relative_type') or '').lower().strip()
@@ -193,16 +234,18 @@ def clean_voter_record(raw_voter: dict, page_num: int, ward: int = None, source_
         
     # Clean Gender
     gender = str(raw_voter.get('gender') or '').lower().strip()
-    if gender in ('पुरुष', 'पु', 'm', 'male'):
+    if gender in ('पुरुष', 'पु', 'm', 'male', 'purush'):
         gender = 'male'
-    elif gender in ('स्त्री', 'महिला', 'स्त्री.', 'f', 'female'):
+    elif gender in ('स्त्री', 'महिला', 'स्त्री.', 'f', 'female', 'mahila'):
         gender = 'female'
     else:
-        gender = 'other' if gender in ('तृतीय लिंग', 'other') else 'male'
+        gender = 'other' if gender in ('तृतीय लिंग', 'other', 't') else 'male'
         
-    # Clean Age
+    # Clean Age (support Devanagari numerals)
+    raw_age_str = str(raw_voter.get('age', 0)).translate(DEV_NUM_MAP)
+    age_match = re.search(r'\d+', raw_age_str)
     try:
-        age = int(raw_voter.get('age', 0))
+        age = int(age_match.group(0)) if age_match else 0
         if age < 18 or age > 125:
             age = max(18, min(age, 120)) if age > 0 else 0
     except (ValueError, TypeError):
@@ -210,12 +253,13 @@ def clean_voter_record(raw_voter: dict, page_num: int, ward: int = None, source_
         
     # Clean House Number
     house_no = str(raw_voter.get('house_number') or '').strip()
-    house_no = re.sub(r'^(?:मकान\s*(?:नं[०.]|संख्या)?|गृह\s*संख्या)\s*[:\-।.]?\s*', '', house_no).strip()
+    house_no = house_no.translate(DEV_NUM_MAP)
+    house_no = HOUSE_PREFIX_PATTERN.sub('', house_no).strip()
+    house_no = re.sub(r'[:\-।./]+$', '', house_no).strip()
     
-    # Clean Voter ID (matching existing DB TEMP_ID format if missing)
-    voter_id = str(raw_voter.get('voter_id') or '').strip()
-    voter_id = re.sub(r'\s+', '', voter_id)
-    if not voter_id or voter_id.lower() in ('none', 'null', ''):
+    # Clean Voter ID (EPIC)
+    voter_id = re.sub(r'\s+', '', voter_id_raw)
+    if not voter_id or voter_id.lower() in ('none', 'null', '', 'nan'):
         sn_val = clean_sn if clean_sn is not None else 0
         if ward is not None:
             voter_id = f"TEMP_ID_W{ward}_{sn_val}"
