@@ -284,11 +284,6 @@ def clean_voter_record(raw_voter: dict, page_num: int, ward: int = None, source_
 
 @retry(
     retry=retry_if_exception_type((APIError, ClientError)),
-    wait=wait_exponential(multiplier=2, min=2, max=60),
-    stop=stop_after_attempt(5)
-)
-@retry(
-    retry=retry_if_exception_type((APIError, ClientError)),
     wait=wait_exponential(multiplier=2, min=5, max=60),
     stop=stop_after_attempt(5),
     reraise=True

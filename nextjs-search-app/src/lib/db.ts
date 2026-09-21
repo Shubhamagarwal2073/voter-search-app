@@ -24,6 +24,9 @@ export async function getVotersDb(): Promise<Database> {
       await db.exec('PRAGMA journal_mode = WAL;');
       await db.exec('PRAGMA busy_timeout = 5000;');
       return db;
+    }).catch((err) => {
+      global._votersDbPromise = undefined;
+      throw err;
     });
   }
   return global._votersDbPromise;
@@ -42,6 +45,9 @@ export async function getAuthDb(): Promise<Database> {
       await db.exec('PRAGMA journal_mode = WAL;');
       await db.exec('PRAGMA busy_timeout = 5000;');
       return db;
+    }).catch((err) => {
+      global._authDbPromise = undefined;
+      throw err;
     });
   }
   return global._authDbPromise;
