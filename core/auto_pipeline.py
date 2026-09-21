@@ -58,10 +58,10 @@ def copy_to_queue(storage_client, target_blobs):
         # Check if already in queue
         dest_blob = input_bucket.blob(queue_path)
         if not dest_blob.exists():
-            print(f"📥 Copying Ward {ward:2d} ({fname}) -> gs://{INPUT_BUCKET_NAME}/{queue_path}...")
+            print(f"[COPY] Copying Ward {ward:2d} ({fname}) -> gs://{INPUT_BUCKET_NAME}/{queue_path}...")
             blob.bucket.copy_blob(blob, input_bucket, queue_path)
         else:
-            print(f"ℹ️ Ward {ward:2d} ({fname}) already present in queue.")
+            print(f"[INFO] Ward {ward:2d} ({fname}) already present in queue.")
             
         copied.append((ward, dest_blob))
     return copied
@@ -84,7 +84,7 @@ def sync_ward_json(json_path: str, ward: int):
         
     # Insert clean active voters
     inserted = insert_voters(active_voters)
-    print(f"✅ Ward {ward} DB Sync Complete: {inserted} active voters.")
+    print(f"[OK] Ward {ward} DB Sync Complete: {inserted} active voters.")
     return inserted
 
 def main():
@@ -96,8 +96,8 @@ def main():
     args = parser.parse_args()
 
     print("==================================================================")
-    print("🚀 AUTOMATED OCR & SYNC PIPELINE (Gemini 2.5 Flash)")
-    print(f"🔒 Protected Wards (Strictly Skipped): {sorted(list(PROTECTED_WARDS))}")
+    print("[START] AUTOMATED OCR & SYNC PIPELINE (Gemini 2.5 Flash)")
+    print(f"Protected Wards (Strictly Skipped): {sorted(list(PROTECTED_WARDS))}")
     print("==================================================================")
 
     storage_client = storage.Client()
@@ -110,7 +110,7 @@ def main():
     # Filter for single ward if specified
     if args.ward is not None:
         if args.ward in PROTECTED_WARDS:
-            print(f"❌ Error: Ward {args.ward} is in the PROTECTED_WARDS list. Aborting.")
+            print(f"[ERROR] Ward {args.ward} is in the PROTECTED_WARDS list. Aborting.")
             return
         available_targets = [t for t in available_targets if t[0] == args.ward]
         if not available_targets:
@@ -122,7 +122,7 @@ def main():
         available_targets = available_targets[:args.batch]
 
     target_ward_numbers = [t[0] for t in available_targets]
-    print(f"\n📋 Target Wards for This Run ({len(available_targets)} wards): {target_ward_numbers}")
+    print(f"\n[QUEUE] Target Wards for This Run ({len(available_targets)} wards): {target_ward_numbers}")
 
     if args.dry_run:
         print("\n[DRY RUN] No actions taken.")
@@ -141,12 +141,12 @@ def main():
     queued_blobs = copy_to_queue(storage_client, available_targets)
 
     # 3. Process each ward in the queue
-    print(f"\n⚡ Beginning Extraction for {len(queued_blobs)} wards...")
+    print(f"\n[START] Beginning Extraction for {len(queued_blobs)} wards...")
     summary_results = {}
 
     for ward, blob in queued_blobs:
         print(f"\n------------------------------------------------------------")
-        print(f"▶️ Processing Ward {ward}...")
+        print(f"[RUN] Processing Ward {ward}...")
         print(f"------------------------------------------------------------")
         try:
             # Process extraction & archiving
@@ -159,24 +159,24 @@ def main():
             
             # Optional quick audit
             if not args.skip_recheck:
-                print(f"\n🔍 Auditing Ward {ward}...")
+                print(f"\n[AUDIT] Auditing Ward {ward}...")
                 run_recheck(target_ward=ward)
                 
             summary_results[ward] = {'status': 'SUCCESS', 'active_voters': inserted}
             
         except Exception as e:
-            print(f"❌ Error processing Ward {ward}: {e}")
+            print(f"[ERROR] Failed processing Ward {ward}: {e}")
             summary_results[ward] = {'status': 'FAILED', 'error': str(e)}
 
     # 4. Final Pipeline Summary
     print("\n==================================================================")
-    print("📊 PIPELINE EXECUTION SUMMARY")
+    print("=== PIPELINE EXECUTION SUMMARY ===")
     print("==================================================================")
     for w, res in sorted(summary_results.items()):
         if res['status'] == 'SUCCESS':
-            print(f"Ward {w:2d}: ✅ SUCCESS ({res['active_voters']} active voters synced)")
+            print(f"Ward {w:2d}: [OK] SUCCESS ({res['active_voters']} active voters synced)")
         else:
-            print(f"Ward {w:2d}: ❌ FAILED ({res.get('error')})")
+            print(f"Ward {w:2d}: [FAIL] FAILED ({res.get('error')})")
     print("==================================================================")
 
 if __name__ == "__main__":

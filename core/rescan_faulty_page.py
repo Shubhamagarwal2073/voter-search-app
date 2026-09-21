@@ -40,22 +40,22 @@ def parse_pages_arg(pages_str: str) -> list:
 
 def rescan_and_heal(targets: dict = None):
     print("=" * 60)
-    print("🚑 HEALING FAULTY PAGES (High-Precision Single-Page Extractor)")
+    print("=== HEALING FAULTY PAGES (High-Precision Single-Page Extractor) ===")
     print("=" * 60)
 
     if not targets:
         targets = TARGET_PAGES
 
     if not targets:
-        print("ℹ️ No target pages specified to heal.")
-        print("👉 Usage: python core/rescan_faulty_page.py --pdf <path> --pages <3,5,7-9> [--ward <num>]")
-        print("👉 Or run: python core/recheck.py to auto-detect faulty pages across the database.")
+        print("[INFO] No target pages specified to heal.")
+        print("  Usage: python core/rescan_faulty_page.py --pdf <path> --pages <3,5,7-9> [--ward <num>]")
+        print("  Or run: python core/recheck.py to auto-detect faulty pages across the database.")
         return
 
     try:
         client = get_genai_client()
     except Exception as e:
-        print(f"❌ Error initializing AI client: {e}")
+        print(f"[ERROR] Error initializing AI client: {e}")
         return
 
     base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -71,7 +71,7 @@ def rescan_and_heal(targets: dict = None):
             if os.path.exists(pdf_rel_path):
                 pdf_full_path = os.path.abspath(pdf_rel_path)
             else:
-                print(f"⚠️ PDF not found: {pdf_full_path}. Skipping.")
+                print(f"[WARNING] PDF not found: {pdf_full_path}. Skipping.")
                 continue
 
         source_filename = os.path.basename(pdf_full_path)
@@ -82,11 +82,11 @@ def rescan_and_heal(targets: dict = None):
 
         pages = target_info.get('pages', [])
         reader = PdfReader(pdf_full_path)
-        print(f"\n📄 Rescanning {len(pages)} page(s) in '{source_filename}' (Ward {ward}): {pages}")
+        print(f"\n[RUN] Rescanning {len(pages)} page(s) in '{source_filename}' (Ward {ward}): {pages}")
 
         for page_num in pages:
             if page_num < 1 or page_num > len(reader.pages):
-                print(f"  ⚠️ Skipping out-of-range page {page_num} (PDF has {len(reader.pages)} pages)")
+                print(f"  [WARNING] Skipping out-of-range page {page_num} (PDF has {len(reader.pages)} pages)")
                 continue
 
             page = reader.pages[page_num - 1]
@@ -120,11 +120,11 @@ def rescan_and_heal(targets: dict = None):
                         ))
                     conn.commit()
 
-                print(f"  ✅ Page {page_num}: Successfully updated with {len(valid_voters)} clean voters.")
+                print(f"  [OK] Page {page_num}: Successfully updated with {len(valid_voters)} clean voters.")
                 total_healed += len(valid_voters)
 
             except Exception as e:
-                print(f"  ❌ Error healing Page {page_num}: {e}")
+                print(f"  [ERROR] Error healing Page {page_num}: {e}")
             finally:
                 if temp_pdf.exists():
                     try:
@@ -137,7 +137,7 @@ def rescan_and_heal(targets: dict = None):
     except OSError:
         pass
 
-    print(f"\n🎉 Healing complete! Total records updated: {total_healed}")
+    print(f"\n[DONE] Healing complete! Total records updated: {total_healed}")
     print("Run 'python core/recheck.py' again to verify accuracy score.")
 
 def main():

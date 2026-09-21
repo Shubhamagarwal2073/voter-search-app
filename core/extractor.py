@@ -361,7 +361,7 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
         ward_match = re.search(r'ward\s*(?:no[-.\s]*)?(\d+)', source_filename, re.IGNORECASE)
         if ward_match:
             ward = int(ward_match.group(1))
-            print(f"ℹ️ Auto-detected Ward: {ward} from filename '{source_filename}'")
+            print(f"[INFO] Auto-detected Ward: {ward} from filename '{source_filename}'")
 
     if max_workers is None:
         max_workers = get_recommended_workers()

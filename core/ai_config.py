@@ -67,16 +67,16 @@ def get_genai_client():
             _key_cycle = itertools.cycle(keys)
         active_key = next(_key_cycle)
         masked_key = active_key[:6] + "..." + active_key[-4:] if len(active_key) > 10 else "***"
-        print(f"🤖 [AI Config] Using Google AI Studio (Key: {masked_key} | Total Keys: {len(keys)} | Model: {get_model_name()})")
+        print(f"[AI Config] Using Google AI Studio (Key: {masked_key} | Total Keys: {len(keys)} | Model: {get_model_name()})")
         return genai.Client(api_key=active_key)
     
     try:
         credentials, project_id = google.auth.default()
         location = os.environ.get("VERTEX_LOCATION", "us-central1")
-        print(f"☁️ [AI Config] Using GCP Vertex AI (Project: {project_id} | Location: {location} | Model: {get_model_name()})")
+        print(f"[AI Config] Using GCP Vertex AI (Project: {project_id} | Location: {location} | Model: {get_model_name()})")
         return genai.Client(vertexai=True, project=project_id, location=location)
     except DefaultCredentialsError:
-        print("❌ Error: Neither GEMINI_API_KEY nor GCP credentials found.")
-        print("👉 To use Free Google AI Studio: export GEMINI_API_KEY='your-key'")
-        print("👉 To use GCP Vertex AI: gcloud auth application-default login")
+        print("[ERROR] Neither GEMINI_API_KEY nor GCP credentials found.")
+        print("  -> To use Free Google AI Studio: export GEMINI_API_KEY='your-key'")
+        print("  -> To use GCP Vertex AI: gcloud auth application-default login")
         raise
