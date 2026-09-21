@@ -18,7 +18,7 @@ from google.auth.exceptions import DefaultCredentialsError
 
 # Local database and AI configuration
 from database import init_db, insert_voters, get_connection
-from ai_config import get_model_name, get_genai_client
+from ai_config import get_model_name, get_genai_client, get_recommended_workers
 
 # Response schema for structured output
 RESPONSE_SCHEMA = types.Schema(
@@ -350,11 +350,21 @@ def extract_from_chunk(client, pdf_path: str, start_page: int, end_page: int) ->
         
     return deduped
 
-def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page_arg: int = None):
+def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page_arg: int = None, max_workers: int = None):
     """Processes a full PDF document and streams verified records to SQLite."""
     if not os.path.exists(pdf_path):
         print(f"File not found: {pdf_path}")
         return []
+
+    source_filename = os.path.basename(pdf_path)
+    if ward is None:
+        ward_match = re.search(r'ward\s*(?:no[-.\s]*)?(\d+)', source_filename, re.IGNORECASE)
+        if ward_match:
+            ward = int(ward_match.group(1))
+            print(f"ℹ️ Auto-detected Ward: {ward} from filename '{source_filename}'")
+
+    if max_workers is None:
+        max_workers = get_recommended_workers()
 
     try:
         client = get_genai_client()
@@ -364,9 +374,8 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
     reader = PdfReader(pdf_path)
     total_pdf_pages = len(reader.pages)
     actual_end_page = end_page_arg if end_page_arg is not None else total_pdf_pages
-    source_filename = os.path.basename(pdf_path)
 
-    print(f"Processing '{source_filename}' ({total_pdf_pages} pages) from page {start_page_arg} to {actual_end_page}...")
+    print(f"Processing '{source_filename}' ({total_pdf_pages} pages) from page {start_page_arg} to {actual_end_page} (Workers: {max_workers})...")
 
     temp_dir = Path("temp_pages")
     temp_dir.mkdir(exist_ok=True)
@@ -399,7 +408,7 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
             if temp_pdf.exists():
                 temp_pdf.unlink()
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(process_page, i) for i in range(start_page_arg - 1, actual_end_page)]
         for future in as_completed(futures):
             voters = future.result()
@@ -416,15 +425,17 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
     return all_voters
 
 def main():
+    default_workers = get_recommended_workers()
     parser = argparse.ArgumentParser(description="Extract Electoral Roll PDF data to SQLite with 99% accuracy.")
     parser.add_argument("pdf_path", help="Path to the PDF file to process.")
-    parser.add_argument("--ward", type=int, help="Optional Ward Number to map these voters to.", default=None)
+    parser.add_argument("--ward", type=int, help="Optional Ward Number (auto-detected from filename if omitted).", default=None)
     parser.add_argument("--start-page", type=int, help="Page to start extraction from", default=1)
     parser.add_argument("--end-page", type=int, help="Page to end extraction at", default=None)
+    parser.add_argument("--workers", type=int, default=default_workers, help=f"Number of concurrent worker threads (default: {default_workers}).")
     args = parser.parse_args()
 
     init_db()
-    parse_pdf(args.pdf_path, args.ward, args.start_page, args.end_page)
+    parse_pdf(args.pdf_path, args.ward, args.start_page, args.end_page, args.workers)
 
 if __name__ == "__main__":
     main()

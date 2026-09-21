@@ -6,11 +6,13 @@ from google import genai
 import google.auth
 from google.auth.exceptions import DefaultCredentialsError
 
+import re
 import sys
 # Add core to path so we can import the existing logic
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'core'))
 from database import init_db, get_connection
 from extractor import extract_from_chunk
+from ai_config import get_genai_client
 
 def delete_voter(voter_id, ward, serial_number):
     """Deletes a voter from the database if they were marked as DELETED or SHIFTED."""
@@ -80,13 +82,15 @@ def parse_last_n_pages(pdf_path: str, ward: int, last_n_pages: int):
         print(f"File not found: {pdf_path}")
         return
 
-    try:
-        credentials, project_id = google.auth.default()
-    except DefaultCredentialsError:
-        print("ERROR: Google Cloud Credentials not found.")
-        return
+    if ward is None:
+        m = re.search(r'ward\s*(?:no[-.\s]*)?(\d+)', os.path.basename(pdf_path), re.IGNORECASE)
+        ward = int(m.group(1)) if m else None
 
-    client = genai.Client(vertexai=True, project=project_id, location='us-central1')
+    try:
+        client = get_genai_client()
+    except Exception as e:
+        print(f"ERROR: Could not initialize AI client: {e}")
+        return
     reader = PdfReader(pdf_path)
     total_pdf_pages = len(reader.pages)
     
@@ -179,7 +183,7 @@ def parse_last_n_pages(pdf_path: str, ward: int, last_n_pages: int):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Update existing SQLite database using ONLY the last N pages of a PDF.")
     parser.add_argument("pdf_path", help="Path to PDF")
-    parser.add_argument("--ward", type=int, required=True, help="Ward Number")
+    parser.add_argument("--ward", type=int, default=None, help="Ward Number (auto-detected from filename if omitted)")
     parser.add_argument("--last-n-pages", type=int, required=True, help="Process ONLY the last N pages (e.g. 8)")
     args = parser.parse_args()
 
