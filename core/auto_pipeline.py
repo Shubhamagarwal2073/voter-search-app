@@ -87,10 +87,53 @@ def sync_ward_json(json_path: str, ward: int):
     print(f"[OK] Ward {ward} DB Sync Complete: {inserted} active voters.")
     return inserted
 
+# State file to track completed wards across pipeline runs
+STATE_FILE = os.path.join(os.path.dirname(__file__), ".pipeline_state.json")
+
+def load_completed_wards() -> set:
+    """Loads the set of already completed wards from the local state file."""
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return set(data.get("completed_wards", []))
+        except Exception:
+            return set()
+    return set()
+
+def save_completed_ward(ward: int):
+    """Persists a completed ward to the local state file."""
+    completed = load_completed_wards()
+    completed.add(ward)
+    try:
+        with open(STATE_FILE, 'w', encoding='utf-8') as f:
+            json.dump({"completed_wards": sorted(list(completed))}, f, indent=2)
+    except Exception as e:
+        print(f"[WARNING] Could not save state: {e}")
+
+def parse_ward_list(ward_str: str) -> set:
+    """Parses a comma-separated list of wards and ranges (e.g. '17,18,20-25')."""
+    wards = set()
+    for part in ward_str.split(','):
+        part = part.strip()
+        if '-' in part:
+            try:
+                s, e = part.split('-', 1)
+                wards.update(range(int(s), int(e) + 1))
+            except ValueError:
+                pass
+        elif part.isdigit():
+            wards.add(int(part))
+    return wards
+
 def main():
     parser = argparse.ArgumentParser(description="Fully Automated End-to-End OCR & Sync Pipeline.")
     parser.add_argument("--batch", type=int, default=None, help="Number of wards to process in this run (e.g. 5).")
     parser.add_argument("--ward", type=int, default=None, help="Process a single specific ward.")
+    parser.add_argument("--start-ward", type=int, default=None, help="Start processing from this ward number onwards (e.g. --start-ward 17).")
+    parser.add_argument("--wards", type=str, default=None, help="Specific wards or ranges to process (e.g. '17-55' or '17,18,20-25').")
+    parser.add_argument("--exclude", type=str, default=None, help="Wards or ranges to exclude (e.g. '2,4,7-16').")
+    parser.add_argument("--force", action="store_true", help="Force re-extraction even if ward is recorded in state file.")
     parser.add_argument("--dry-run", action="store_true", help="List target wards without copying or extracting.")
     parser.add_argument("--skip-recheck", action="store_true", help="Skip the recheck step after sync.")
     args = parser.parse_args()
@@ -107,6 +150,12 @@ def main():
         print("No target wards found to process.")
         return
 
+    # Filter out wards already completed in previous runs
+    completed = load_completed_wards()
+    if completed and not args.force:
+        print(f"[INFO] Skipping {len(completed)} ward(s) previously completed: {sorted(list(completed))}")
+        available_targets = [t for t in available_targets if t[0] not in completed]
+
     # Filter for single ward if specified
     if args.ward is not None:
         if args.ward in PROTECTED_WARDS:
@@ -114,8 +163,22 @@ def main():
             return
         available_targets = [t for t in available_targets if t[0] == args.ward]
         if not available_targets:
-            print(f"Ward {args.ward} not found in archive.")
+            print(f"Ward {args.ward} not found or already completed.")
             return
+
+    # Filter by start ward
+    if args.start_ward is not None:
+        available_targets = [t for t in available_targets if t[0] >= args.start_ward]
+
+    # Filter by specific wards or ranges
+    if args.wards is not None:
+        selected_wards = parse_ward_list(args.wards)
+        available_targets = [t for t in available_targets if t[0] in selected_wards]
+
+    # Exclude specific wards
+    if args.exclude is not None:
+        excluded_wards = parse_ward_list(args.exclude)
+        available_targets = [t for t in available_targets if t[0] not in excluded_wards]
 
     # Apply batch limit if specified
     if args.batch:
@@ -156,6 +219,9 @@ def main():
             fname = os.path.basename(blob.name)
             output_json_path = f"/tmp/{fname.replace('.pdf', '_voters.json')}"
             inserted = sync_ward_json(output_json_path, ward)
+            
+            # Record in persistent state file
+            save_completed_ward(ward)
             
             # Optional quick audit
             if not args.skip_recheck:
