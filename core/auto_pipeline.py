@@ -139,7 +139,7 @@ def main():
     args = parser.parse_args()
 
     print("==================================================================")
-    print("[START] AUTOMATED OCR & SYNC PIPELINE (Gemini 2.5 Flash)")
+    print(f"[START] AUTOMATED OCR & SYNC PIPELINE ({get_model_name()})")
     print(f"Protected Wards (Strictly Skipped): {sorted(list(PROTECTED_WARDS))}")
     print("==================================================================")
 

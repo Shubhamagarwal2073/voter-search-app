@@ -2,12 +2,9 @@ import os
 import argparse
 from pathlib import Path
 from pypdf import PdfReader, PdfWriter
-from google import genai
-import google.auth
-from google.auth.exceptions import DefaultCredentialsError
-
 import re
 import sys
+
 # Add core to path so we can import the existing logic
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'core'))
 from database import init_db, get_connection
@@ -103,17 +100,18 @@ def parse_last_n_pages(pdf_path: str, ward: int, last_n_pages: int):
     temp_dir.mkdir(exist_ok=True)
     
     for i in range(start_page_arg - 1, total_pdf_pages):
-        chunk_page = reader.pages[i]
         page_num = i + 1
+        temp_pdf = None
         
-        writer = PdfWriter()
-        writer.add_page(chunk_page)
-            
-        temp_pdf = temp_dir / f"page_{page_num}.pdf"
-        with open(temp_pdf, "wb") as f:
-            writer.write(f)
-            
         try:
+            chunk_page = reader.pages[i]
+            writer = PdfWriter()
+            writer.add_page(chunk_page)
+                
+            temp_pdf = temp_dir / f"page_{page_num}.pdf"
+            with open(temp_pdf, "wb") as f:
+                writer.write(f)
+                
             print(f"\n  Processing Page {page_num}...")
             voters = extract_from_chunk(client, str(temp_pdf), page_num, page_num)
             source_filename = os.path.basename(pdf_path)

@@ -37,12 +37,12 @@ def run_recheck(db_path: str = DEFAULT_DB_PATH, target_ward: int = None):
     total_records = len(rows)
 
     if total_records == 0:
-        print(f"⚠️ No voters found in database{' for Ward ' + str(target_ward) if target_ward else ''}.")
+        print(f"[WARNING] No voters found in database{' for Ward ' + str(target_ward) if target_ward else ''}.")
         conn.close()
         return
 
     print("=" * 70)
-    print(f"🔍 VOTER QUALITY AUDIT & RECHECK (Total Records: {total_records:,})")
+    print(f"=== VOTER QUALITY AUDIT & RECHECK (Total Records: {total_records:,}) ===")
     print("=" * 70)
 
     english_char_pattern = re.compile(r'[a-zA-Z]')
@@ -201,12 +201,12 @@ def run_recheck(db_path: str = DEFAULT_DB_PATH, target_ward: int = None):
         print(f"Ward {ward:<3} | {stats['total']:<14,} | {clean:<14,} | {new_adds:<18,} | {stats['errors']:<8} | {ward_acc:>6.2f}%")
 
     print("-" * 88)
-    print(f"🎯 OVERALL DATABASE ACCURACY SCORE: {accuracy_score:.2f}%\n")
+    print(f"[SCORE] OVERALL DATABASE ACCURACY SCORE: {accuracy_score:.2f}%\n")
 
     if faulty_pages:
-        print(f"🚨 FOUND {len(faulty_pages)} FAULTY / SUSPECT PAGES NEEDING RESCAN:")
+        print(f"[ALERT] FOUND {len(faulty_pages)} FAULTY / SUSPECT PAGES NEEDING RESCAN:")
         for (ward, page), info in sorted(faulty_pages.items()):
-            print(f"   • Ward {ward}, Page {page} (File: {info['source_file'] or 'unknown'}): {', '.join(info['reasons'])}")
+            print(f"   * Ward {ward}, Page {page} (File: {info['source_file'] or 'unknown'}): {', '.join(info['reasons'])}")
         
         generate_rescan_script(faulty_pages, db_path)
     else:
@@ -246,7 +246,6 @@ if sys.platform == "win32":
         pass
 
 # Core modules
-import sys
 sys.path.append(os.path.dirname(__file__))
 from extractor import extract_from_chunk, clean_voter_record
 from database import get_connection
@@ -315,15 +314,16 @@ def rescan_and_heal(targets: dict = None):
                 print(f"  [WARNING] Skipping out-of-range page {{page_num}} (PDF has {{len(reader.pages)}} pages)")
                 continue
 
-            page = reader.pages[page_num - 1]
-            writer = PdfWriter()
-            writer.add_page(page)
-
-            temp_pdf = temp_dir / f"heal_w{{ward}}_p{{page_num}}.pdf"
-            with open(temp_pdf, "wb") as f:
-                writer.write(f)
-
+            temp_pdf = None
             try:
+                page = reader.pages[page_num - 1]
+                writer = PdfWriter()
+                writer.add_page(page)
+
+                temp_pdf = temp_dir / f"heal_w{{ward}}_p{{page_num}}.pdf"
+                with open(temp_pdf, "wb") as f:
+                    writer.write(f)
+
                 raw_voters = extract_from_chunk(client, str(temp_pdf), page_num, page_num)
                 valid_voters = []
                 for raw in raw_voters:
@@ -352,7 +352,7 @@ def rescan_and_heal(targets: dict = None):
             except Exception as e:
                 print(f"  [ERROR] Error healing Page {{page_num}}: {{e}}")
             finally:
-                if temp_pdf.exists():
+                if temp_pdf and temp_pdf.exists():
                     try:
                         temp_pdf.unlink()
                     except OSError:

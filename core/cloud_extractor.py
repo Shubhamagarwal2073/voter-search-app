@@ -163,6 +163,7 @@ def process_blob(target_blob, input_bucket, output_bucket, client, start_page: i
             except OSError:
                 pass
 
+def main():
     default_workers = get_recommended_workers()
     parser = argparse.ArgumentParser(description="Robust Cloud OCR Extractor for Electoral Roll PDFs.")
     parser.add_argument("--start-page", type=int, default=3, help="Page to start extraction from (default: 3, skipping cover pages).")
@@ -206,7 +207,10 @@ def process_blob(target_blob, input_bucket, output_bucket, client, start_page: i
     # Case B: Process all files in queue
     if args.all_queue:
         for b in pdf_blobs:
-            process_blob(b, input_bucket, output_bucket, client, start_page=args.start_page)
+            try:
+                process_blob(b, input_bucket, output_bucket, client, start_page=args.start_page)
+            except Exception as e:
+                print(f"[ERROR] Failed to process {b.name}: {e}")
         return
 
     # Case C: Standard Cloud Run Task mode (indexed by CLOUD_RUN_TASK_INDEX)

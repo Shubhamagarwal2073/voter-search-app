@@ -13,9 +13,6 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from google.genai.errors import APIError, ClientError
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import google.auth
-from google.auth.exceptions import DefaultCredentialsError
-
 # Local database and AI configuration
 from database import init_db, insert_voters, get_connection
 from ai_config import get_model_name, get_genai_client, get_recommended_workers

@@ -195,14 +195,6 @@ export async function GET(request: Request) {
         wardParam = allowedArr;
       }
       
-      // Helper function to safely slice results and compute metadata
-      const applyFuzzyPagination = (allResults: any[]) => {
-        totalItems = allResults.length;
-        totalPages = Math.max(1, Math.ceil(totalItems / limit));
-        currentPage = Math.min(Math.max(1, page), totalPages);
-        return allResults.slice((currentPage - 1) * limit, currentPage * limit);
-      };
-
       // Helper function to execute SQL with COUNT(*) in parallel
       const executePaginatedSql = async (baseQuery: string, countQuery: string, params: any[]) => {
         const [countResult, dataResult] = await Promise.all([

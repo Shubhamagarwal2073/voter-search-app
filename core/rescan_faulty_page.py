@@ -17,7 +17,6 @@ if sys.platform == "win32":
         pass
 
 # Core modules
-import sys
 sys.path.append(os.path.dirname(__file__))
 from extractor import extract_from_chunk, clean_voter_record
 from database import get_connection
