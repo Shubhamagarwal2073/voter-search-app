@@ -82,9 +82,22 @@ def run_recheck(db_path: str = DEFAULT_DB_PATH, target_ward: int = None):
         if len(name) <= 1:
             record_errors.append("Empty/single-letter Name")
 
-        # Matra corruption: 4+ consecutive consonants without vowels or halant (e.g. 'ररषत गरललत')
-        consonant_cluster_pattern = re.compile(r'[क-ह]{4,}')
-        if consonant_cluster_pattern.search(name) or consonant_cluster_pattern.search(rel_name):
+        # Matra corruption: 5+ consecutive consonants without vowels or halant (excluding valid compound names)
+        # 4-consonant sequences are common in Hindi names like मदनलाल, रतनलाल, कमलचंद, पवनकुमार, दशरथ
+        def has_matra_corruption(text: str) -> bool:
+            if not text:
+                return False
+            for word in text.split():
+                if re.search(r'[क-ह]{5,}', word):
+                    # Check if it has legitimate common compound endings
+                    if not any(sub in word for sub in ('लाल', 'कुमार', 'चंद', 'राम', 'सिंह', 'राज', 'करण', 'प्रसाद', 'प्रकाश', 'नारायण')):
+                        return True
+                # Repeated triple consonants e.g. 'ररर'
+                if re.search(r'([क-ह])\1{2,}', word):
+                    return True
+            return False
+
+        if has_matra_corruption(name) or has_matra_corruption(rel_name):
             record_errors.append("Matra corruption (dropped vowels / unpronounceable sequence)")
 
         # Matra corruption: illegal stacked vowel signs (e.g. ाे or ीु)
@@ -118,24 +131,52 @@ def run_recheck(db_path: str = DEFAULT_DB_PATH, target_ward: int = None):
                 'reasons': record_errors
             })
 
+    # Load known deleted serial numbers from extracted JSON if available to prevent flagging confirmed deletions as missing
+    deleted_serials_by_ward = defaultdict(set)
+    deleted_count_by_page = defaultdict(int)
+    import glob
+    json_files = glob.glob('/tmp/*_voters.json') + glob.glob('outputs/json/*_voters.json')
+    for jf in json_files:
+        try:
+            with open(jf, 'r', encoding='utf-8') as f:
+                jdata = json.load(f)
+                for jv in jdata:
+                    if jv.get('is_deleted_or_shifted'):
+                        w = jv.get('ward')
+                        p = jv.get('page_number')
+                        sn_del = jv.get('serial_number')
+                        if w and sn_del:
+                            deleted_serials_by_ward[w].add(sn_del)
+                        if w and p:
+                            deleted_count_by_page[(w, p)] += 1
+        except Exception:
+            pass
+
     # Page-level density & serial gap analysis
     faulty_pages = {}
     for (ward, page), pdata in page_stats.items():
         reasons = []
-        if page > 2 and pdata['count'] < 20:
-            reasons.append(f"Suspiciously low count ({pdata['count']} voters)")
+        del_count = deleted_count_by_page.get((ward, page), 0)
+        total_page_cards = pdata['count'] + del_count
+
+        # If active + deleted is still suspiciously low on a middle page
+        if page > 2 and total_page_cards < 15 and page < max(p[1] for p in page_stats.keys() if p[0] == ward):
+            reasons.append(f"Suspiciously low count ({pdata['count']} active, {del_count} deleted)")
 
         valid_sns = sorted([s for s in pdata['serials'] if s > 0])
         gaps = []
         for i in range(len(valid_sns) - 1):
             diff = valid_sns[i+1] - valid_sns[i]
             if diff > 1 and diff < 10:
-                gaps.extend(range(valid_sns[i] + 1, valid_sns[i+1]))
+                potential_gaps = range(valid_sns[i] + 1, valid_sns[i+1])
+                # Filter out confirmed deletions!
+                real_missing = [g for g in potential_gaps if g not in deleted_serials_by_ward[ward]]
+                gaps.extend(real_missing)
         if gaps:
             reasons.append(f"Missing serial numbers: {gaps[:5]}{'...' if len(gaps)>5 else ''}")
 
-        if len(pdata['errors']) >= 2 or reasons:
-            all_reasons = reasons + [f"{len(pdata['errors'])} record spelling/id issues"]
+        if len(pdata['errors']) >= 3 or reasons:
+            all_reasons = reasons + ([f"{len(pdata['errors'])} record spelling/id issues"] if pdata['errors'] else [])
             faulty_pages[(ward, page)] = {
                 'reasons': all_reasons,
                 'source_file': pdata['source_file'],
