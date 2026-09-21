@@ -133,7 +133,6 @@ def run_recheck(db_path: str = DEFAULT_DB_PATH, target_ward: int = None):
 
     # Load known deleted serial numbers from extracted JSON if available to prevent flagging confirmed deletions as missing
     deleted_serials_by_ward = defaultdict(set)
-    deleted_count_by_page = defaultdict(int)
     import glob
     json_files = glob.glob('/tmp/*_voters.json') + glob.glob('outputs/json/*_voters.json')
     for jf in json_files:
@@ -143,12 +142,14 @@ def run_recheck(db_path: str = DEFAULT_DB_PATH, target_ward: int = None):
                 for jv in jdata:
                     if jv.get('is_deleted_or_shifted'):
                         w = jv.get('ward')
-                        p = jv.get('page_number')
                         sn_del = jv.get('serial_number')
-                        if w and sn_del:
-                            deleted_serials_by_ward[w].add(sn_del)
-                        if w and p:
-                            deleted_count_by_page[(w, p)] += 1
+                        if w is not None and sn_del is not None:
+                            try:
+                                w_int = int(w)
+                                sn_int = int(re.search(r'\d+', str(sn_del)).group(0))
+                                deleted_serials_by_ward[w_int].add(sn_int)
+                            except Exception:
+                                pass
         except Exception:
             pass
 
@@ -156,14 +157,19 @@ def run_recheck(db_path: str = DEFAULT_DB_PATH, target_ward: int = None):
     faulty_pages = {}
     for (ward, page), pdata in page_stats.items():
         reasons = []
-        del_count = deleted_count_by_page.get((ward, page), 0)
-        total_page_cards = pdata['count'] + del_count
+        valid_sns = sorted([s for s in pdata['serials'] if s > 0])
+        
+        # Count how many confirmed deletions fall within this page's serial number range
+        page_del_count = 0
+        if valid_sns:
+            page_del_count = sum(1 for s in deleted_serials_by_ward[ward] if valid_sns[0] <= s <= valid_sns[-1])
+        total_page_cards = pdata['count'] + page_del_count
 
         # If active + deleted is still suspiciously low on a middle page
-        if page > 2 and total_page_cards < 15 and page < max(p[1] for p in page_stats.keys() if p[0] == ward):
-            reasons.append(f"Suspiciously low count ({pdata['count']} active, {del_count} deleted)")
+        max_page = max((p[1] for p in page_stats.keys() if p[0] == ward), default=0)
+        if page > 2 and total_page_cards < 15 and page < max_page:
+            reasons.append(f"Suspiciously low count ({pdata['count']} active, {page_del_count} deleted)")
 
-        valid_sns = sorted([s for s in pdata['serials'] if s > 0])
         gaps = []
         for i in range(len(valid_sns) - 1):
             diff = valid_sns[i+1] - valid_sns[i]
