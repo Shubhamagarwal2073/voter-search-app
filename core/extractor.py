@@ -383,15 +383,17 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
 
     def process_page(page_idx):
         page_num = page_idx + 1
-        page = reader.pages[page_idx]
-        writer = PdfWriter()
-        writer.add_page(page)
-
-        temp_pdf = temp_dir / f"page_{page_num}.pdf"
-        with open(temp_pdf, "wb") as f:
-            writer.write(f)
+        temp_pdf = None
 
         try:
+            page = reader.pages[page_idx]
+            writer = PdfWriter()
+            writer.add_page(page)
+
+            temp_pdf = temp_dir / f"page_{page_num}.pdf"
+            with open(temp_pdf, "wb") as f:
+                writer.write(f)
+
             raw_voters = extract_from_chunk(client, str(temp_pdf), page_num, page_num)
             valid_voters = []
             for raw in raw_voters:
@@ -405,15 +407,21 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
             print(f"  [ERROR] Page {page_num} failed: {e}")
             return []
         finally:
-            if temp_pdf.exists():
-                temp_pdf.unlink()
+            if temp_pdf and temp_pdf.exists():
+                try:
+                    temp_pdf.unlink()
+                except OSError:
+                    pass
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(process_page, i) for i in range(start_page_arg - 1, actual_end_page)]
         for future in as_completed(futures):
-            voters = future.result()
-            if voters:
-                all_voters.extend(voters)
+            try:
+                voters = future.result()
+                if voters:
+                    all_voters.extend(voters)
+            except Exception as err:
+                print(f"  [ERROR] Worker thread raised exception: {err}")
                 insert_voters(voters)
 
     try:

@@ -52,17 +52,19 @@ def process_pdf_in_memory(pdf_path: str, source_filename: str, client, start_pag
     
     def process_single_page(page_idx: int) -> list:
         page_num = page_idx + 1
-        page = reader.pages[page_idx]
-        
-        writer = PdfWriter()
-        writer.add_page(page)
-        
-        temp_pdf = temp_dir / f"page_{page_num}_{int(time.time()*1000) % 10000}.pdf"
-        with open(temp_pdf, "wb") as f:
-            writer.write(f)
-            
         page_voters = []
+        temp_pdf = None
+        
         try:
+            page = reader.pages[page_idx]
+            
+            writer = PdfWriter()
+            writer.add_page(page)
+            
+            temp_pdf = temp_dir / f"page_{page_num}_{int(time.time()*1000) % 10000}.pdf"
+            with open(temp_pdf, "wb") as f:
+                writer.write(f)
+                
             # Extract cards with retry logic from extractor
             raw_voters = extract_from_chunk(client, str(temp_pdf), page_num, page_num)
             
@@ -84,7 +86,7 @@ def process_pdf_in_memory(pdf_path: str, source_filename: str, client, start_pag
             failed_pages.append(page_num)
             return []
         finally:
-            if temp_pdf.exists():
+            if temp_pdf and temp_pdf.exists():
                 try:
                     temp_pdf.unlink()
                 except OSError:
@@ -94,9 +96,12 @@ def process_pdf_in_memory(pdf_path: str, source_filename: str, client, start_pag
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(process_single_page, i): i + 1 for i in range(actual_start - 1, total_pdf_pages)}
         for future in as_completed(futures):
-            res = future.result()
-            if res:
-                all_voters.extend(res)
+            try:
+                res = future.result()
+                if res:
+                    all_voters.extend(res)
+            except Exception as err:
+                print(f"  [ERROR] Worker thread raised exception: {err}")
                 
     # Sort all extracted voters by page_number then serial_number
     all_voters.sort(key=lambda x: (x.get('page_number') or 0, x.get('serial_number') or 0))

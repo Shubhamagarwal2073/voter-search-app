@@ -89,15 +89,16 @@ def rescan_and_heal(targets: dict = None):
                 print(f"  [WARNING] Skipping out-of-range page {page_num} (PDF has {len(reader.pages)} pages)")
                 continue
 
-            page = reader.pages[page_num - 1]
-            writer = PdfWriter()
-            writer.add_page(page)
-
-            temp_pdf = temp_dir / f"heal_w{ward}_p{page_num}.pdf"
-            with open(temp_pdf, "wb") as f:
-                writer.write(f)
-
+            temp_pdf = None
             try:
+                page = reader.pages[page_num - 1]
+                writer = PdfWriter()
+                writer.add_page(page)
+
+                temp_pdf = temp_dir / f"heal_w{ward}_p{page_num}.pdf"
+                with open(temp_pdf, "wb") as f:
+                    writer.write(f)
+
                 raw_voters = extract_from_chunk(client, str(temp_pdf), page_num, page_num)
                 valid_voters = []
                 for raw in raw_voters:
@@ -126,7 +127,7 @@ def rescan_and_heal(targets: dict = None):
             except Exception as e:
                 print(f"  [ERROR] Error healing Page {page_num}: {e}")
             finally:
-                if temp_pdf.exists():
+                if temp_pdf and temp_pdf.exists():
                     try:
                         temp_pdf.unlink()
                     except OSError:
