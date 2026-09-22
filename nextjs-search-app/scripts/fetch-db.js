@@ -17,6 +17,11 @@ async function fetchDatabases() {
   const privateKey = process.env.GCP_PRIVATE_KEY;
   const projectId = process.env.GCP_PROJECT_ID;
 
+  console.log('[fetch-db] Checking environment:');
+  console.log(`[fetch-db] - GCP_PROJECT_ID: ${projectId ? 'Set' : 'Missing'}`);
+  console.log(`[fetch-db] - GCP_CLIENT_EMAIL: ${clientEmail ? 'Set' : 'Missing'}`);
+  console.log(`[fetch-db] - GCP_PRIVATE_KEY: ${privateKey ? 'Set (' + privateKey.length + ' chars)' : 'Missing'}`);
+
   if (!clientEmail || !privateKey) {
     console.warn('[fetch-db] No GCP credentials detected.');
     console.warn('[fetch-db] Skipping cloud database download (build will continue).');
@@ -36,7 +41,8 @@ async function fetchDatabases() {
     };
 
     const storage = new Storage(storageOptions);
-    const bucketName = process.env.ARCHIVE_BUCKET_NAME || 'ocr-voter-lists-archive';
+    const bucketName = process.env.GCS_BUCKET_NAME || process.env.ARCHIVE_BUCKET_NAME || 'ocr-voter-lists-archive';
+    console.log(`[fetch-db] Using bucket: ${bucketName}`);
     const bucket = storage.bucket(bucketName);
 
     if (!fs.existsSync(dbDir)) {
