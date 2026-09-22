@@ -42,7 +42,8 @@ async function fetchDatabases() {
 
     const storage = new Storage(storageOptions);
     const bucketName = process.env.GCS_BUCKET_NAME || process.env.ARCHIVE_BUCKET_NAME || 'ocr-voter-lists-archive';
-    console.log(`[fetch-db] Using bucket: ${bucketName}`);
+    const datasetName = process.env.DATASET_NAME || 'nagar_parishad';
+    console.log(`[fetch-db] Using bucket: ${bucketName} (dataset: ${datasetName})`);
     const bucket = storage.bucket(bucketName);
 
     if (!fs.existsSync(dbDir)) {
@@ -50,14 +51,16 @@ async function fetchDatabases() {
     }
 
     // Download voters.db from GCS
-    console.log('[fetch-db] Downloading nagar_parishad/Database/voters.db ...');
-    await bucket.file('nagar_parishad/Database/voters.db').download({ destination: votersDbPath });
+    const votersDbRemote = `${datasetName}/Database/voters.db`;
+    console.log(`[fetch-db] Downloading ${votersDbRemote} ...`);
+    await bucket.file(votersDbRemote).download({ destination: votersDbPath });
     console.log('[fetch-db] Successfully downloaded voters.db');
 
     // Download auth.db from GCS
     try {
-      console.log('[fetch-db] Downloading nagar_parishad/Database/auth.db ...');
-      await bucket.file('nagar_parishad/Database/auth.db').download({ destination: authDbPath });
+      const authDbRemote = `${datasetName}/Database/auth.db`;
+      console.log(`[fetch-db] Downloading ${authDbRemote} ...`);
+      await bucket.file(authDbRemote).download({ destination: authDbPath });
       console.log('[fetch-db] Successfully downloaded auth.db');
     } catch (authErr) {
       console.warn('[fetch-db] Notice: Could not download auth.db (will be auto-initialized if missing):', authErr.message);

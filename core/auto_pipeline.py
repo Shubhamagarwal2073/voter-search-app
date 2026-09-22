@@ -12,13 +12,15 @@ from database import get_connection, insert_voters
 from recheck import run_recheck
 from ai_config import get_genai_client, get_model_name
 
-ARCHIVE_BUCKET_NAME = "ocr-voter-lists-archive"
+ARCHIVE_BUCKET_NAME = os.environ.get("ARCHIVE_BUCKET_NAME", "ocr-voter-lists-archive")
 INPUT_BUCKET_NAME = os.environ.get("INPUT_BUCKET", "ocr-voter-lists-input")
 OUTPUT_BUCKET_NAME = os.environ.get("OUTPUT_BUCKET", "ocr-voter-lists-output")
 DATASET_NAME = os.environ.get("DATASET_NAME", "nagar_parishad")
 
 # Protected wards that must NEVER be overwritten or re-extracted
-PROTECTED_WARDS = {1, 3, 5, 6, 11, 19, 31, 49}
+_protected_env = os.environ.get("PROTECTED_WARDS", "")
+PROTECTED_WARDS = {int(w.strip()) for w in _protected_env.split(",") if w.strip().isdigit()} if _protected_env else {1, 3, 5, 6, 11, 19, 31, 49}
+
 
 def extract_ward_number(filename: str) -> int:
     """Extracts numeric ward number from filename (e.g. 'Ward No-002-Part No-001.pdf' -> 2)."""
