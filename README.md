@@ -49,10 +49,6 @@ graph TD
    * **< 1.5ms Query Latency**: Direct prepared SQL statements on SQLite configured with `PRAGMA journal_mode = WAL` (Write-Ahead Logging) and `busy_timeout = 5000`.
    * **Role-Based Access Control**: NextAuth Google OAuth with role-based restrictions (`admin` vs `volunteer`) and ward permission filtering (`allowed_wards`).
    * **Edge Security**: Next.js Edge Middleware protecting admin routes before page rendering.
-3. **Civic Voter Engagement Portal (`voter-portal-frontend/`)**:
-   * **Interactive Ward GPS Map**: Leaflet interactive boundary maps for 55 Wards.
-   * **Candidate Directory**: Fast, static JSON-backed candidate roster with party symbols.
-   * **Voter Selfie Booth**: Browser-based camera generating branded civic voter certificates.
 
 ---
 
@@ -246,22 +242,16 @@ voter-search-app/
 │   ├── recheck.py            # 6-point data quality & Devanagari accuracy auditor
 │   └── rescan_faulty_page.py # Dynamic surgical page healer with CLI arguments
 ├── docs/                     # Project documentation & analytics artifacts
-│   ├── analytics/            # Production analytics verification proof screenshots
-│   └── INTERVIEW_PREP.md     # System architecture, deep technical concepts & interview Q&A
+│   └── analytics/            # Production analytics verification proof screenshots
 ├── nextjs-search-app/        # Core search engine & volunteer portal
 │   ├── data/                 # SQLite databases (voters.db, auth.db)
 │   └── src/
 │       ├── app/              # Next.js App Router (Search, Admin, Voting pad)
 │       ├── lib/db.ts         # Persistent SQLite Singleton with WAL mode
 │       └── middleware.ts     # Edge security protecting /admin and /api/admin
-├── outputs/                  # Generated datasets & exports
-│   ├── excel_csv/            # Ward Block & Gali CSVs and combined Excel workbooks
-│   └── json/                 # Candidate directory and ward JSON outputs
 ├── scripts/                  # Operational utilities and batch update scripts
-│   ├── extract_candidates.py # Candidate directory PDF extractor
 │   ├── update_last_n_pages.py# Last N pages updater for roll additions/deletions
 │   └── run_all_updates.ps1   # Batch update helper for electoral roll additions
-├── voter-portal-frontend/    # Public civic engagement portal (Ward map, selfie booth)
 ├── .env.example              # Template environment variables
 ├── .gitignore                # Complete database and secret isolation rules
 ├── Dockerfile
