@@ -63,13 +63,39 @@ During live election polling in Ward 5, the platform was deployed directly to bo
 ### Key Election-Day Metrics:
 * **212+ Page Views** & **495 Interaction Events** recorded during active polling hours.
 * **35+ Active Field Volunteers** running real-time lookups simultaneously.
-* **23 Concurrent Active Users** during the peak morning turnout rush (100% organic field adoption).
+* **23 Concurrent Users Peak** with **< 200ms latency** on indexed SQLite WAL storage.
 * **Instant Sub-Second Lookups**: Reduced voter lookup time from 3–5 minutes per voter in physical paper rolls to less than **2 seconds** on mobile devices.
 
 <div align="center">
   <img src="docs/analytics/ga4_realtime.png" alt="Real-time User Activity" width="48%" />
   <img src="docs/analytics/ga4_spike.png" alt="User Surge Curve" width="48%" />
 </div>
+
+---
+
+## 🛡️ Anti-Scraping, Rate Limiting & Enterprise Security Architecture
+
+To prevent automated bot scraping, bulk database dumping, and ensure high availability during election rushes, the platform implements a defense-in-depth security model across Next.js API Routes, SQLite, and Edge Middleware:
+
+### 1. Anti-Scraping & SQL Sanitization Tripwires
+* **SQL Wildcard Sanitization**: Strips SQL wildcard tokens (`%`, `_`) from search parameters before executing parameterized SQLite statements, preventing adversaries from crafting wildcard queries to dump the database.
+* **Query Length Enforcements**: Enforces minimum character thresholds (min 2 chars for Voter IDs, 3 chars for Names and House numbers) to block automated brute-force single-letter enumeration scrapers.
+* **Pagination Hard Capping**: Non-admin searches are hard-clamped to a maximum of 25 records per page and capped at 4 pages (100 records max per search session), effectively blocking automated full-table pagination scrapers.
+* **Voter ID-Only Public Gate**: Unauthenticated visitors are restricted to searching exclusively via exact Voter ID, preventing anonymous mass browsing by surname or neighborhood.
+
+### 2. Multi-Tier Rate Limiting & Quota Engine
+Driven by an atomic SQLite tracking table (`public_limits`) with rolling 24-hour sliding windows:
+
+| User Tier | Authentication | Daily Search Quota | Rate Limiting | Data Privacy & Masking |
+| :--- | :--- | :--- | :--- | :--- |
+| **Tier 1: Public** | Unauthenticated (Anonymous) | **2 searches / 24 hrs** | Tracked via Client IP | Voter ID masked (`SSB****801`) |
+| **Tier 2: Guest** | Google OAuth (`guest` role) | **4 searches / 24 hrs** | Tracked via `user:email` | Voter ID masked (`SSB****801`) |
+| **Tier 3: Volunteer** | Admin Approved (`paid` role) | **Unlimited Daily** | 25 req/min loop guard | Full unmasked Voter ID + Ward-filtered search |
+| **Tier 4: Super Admin** | Authorized Admin Email | **Full Access** | 25 req/min loop guard | Admin dashboard (`/admin`), user role upgrades |
+
+### 3. Edge Middleware & Role-Based Access Control (RBAC)
+* **Next.js Edge Middleware (`middleware.ts`)**: Decodes and verifies encrypted NextAuth JWT tokens at the edge before request execution, dropping unauthorized requests to `/admin` and user-management APIs (`/api/admin/users`).
+* **Ward-Level Isolation**: Volunteer tokens can be locked to designated wards (e.g. `allowed_wards: [5, 7]`). The backend query compiler injects parameterized `AND ward IN (...)` constraints directly into the SQLite execution plan, preventing volunteers from viewing rolls from unassigned districts.
 
 ---
 
@@ -131,8 +157,8 @@ python core/recheck.py --ward 5
 # 4. If any pages are flagged with missing serials or low contrast, heal them surgically:
 python core/rescan_faulty_page.py --pdf "input_pdfs/Ward No-005-Part No-001.pdf" --pages "3,5,10-12" --ward 5
 
-# 5. Extract candidate directory PDF with party symbols
-python scripts/extract_candidates.py --pdf "input_pdfs/candidates.pdf" --output "outputs/json/candidates.json"
+# 5. Apply additions/deletions from supplementary PDF pages:
+python scripts/update_last_n_pages.py --pdf "input_pdfs/Ward No-005-Part No-001.pdf" --pages 3 --ward 5
 ```
 
 ---
@@ -215,7 +241,6 @@ sudo caddy reverse-proxy --from https://yourdomain.com --to 127.0.0.1:3000
 | **Audit all wards in database** | `python core/recheck.py --all` | Terminal |
 | **Surgically heal flagged pages** | `python core/rescan_faulty_page.py --pdf "input_pdfs/Ward-007.pdf" --pages "3,5,10-12" --ward 7` | Terminal |
 | **Update additions/deletions from last 3 pages** | `python scripts/update_last_n_pages.py --pdf "input_pdfs/Ward-007.pdf" --pages 3 --ward 7` | Terminal |
-| **Extract candidate directory PDF** | `python scripts/extract_candidates.py --pdf "input_pdfs/candidates.pdf" --output "outputs/json/candidates.json"` | Terminal |
 | **Sync Cloud JSONs to SQLite** | `python core/cloud_sync.py --dataset nagar_parishad` | Terminal |
 | **Switch model to Gemini 2.0 Flash** | `export GEMINI_MODEL="gemini-2.0-flash"` | Any terminal |
 | **Switch to Free Google AI Studio API Key** | `export GEMINI_API_KEY="AIzaSyYourStudioApiKeyHere..."` | Any terminal |
