@@ -56,6 +56,27 @@ graph TD
 
 ---
 
+## 📊 Real-World Production Analytics & Field Impact
+
+During live election polling in Ward 5, the platform was deployed directly to booth volunteers, poll workers, and family coordinators. 
+
+<div align="center">
+  <img src="docs/analytics/ga4_overview.png" alt="Google Analytics Overview" width="85%" />
+</div>
+
+### Key Election-Day Metrics:
+* **212+ Page Views** & **495 Interaction Events** recorded during active polling hours.
+* **35+ Active Field Volunteers** running real-time lookups simultaneously.
+* **23 Concurrent Active Users** during the peak morning turnout rush (100% organic field adoption).
+* **Instant Sub-Second Lookups**: Reduced voter lookup time from 3–5 minutes per voter in physical paper rolls to less than **2 seconds** on mobile devices.
+
+<div align="center">
+  <img src="docs/analytics/ga4_realtime.png" alt="Real-time User Activity" width="48%" />
+  <img src="docs/analytics/ga4_spike.png" alt="User Surge Curve" width="48%" />
+</div>
+
+---
+
 ## 🚀 Zero-to-Production Quickstart Guide
 
 Follow these steps to set up the entire platform from a fresh clone to a full production deployment.
