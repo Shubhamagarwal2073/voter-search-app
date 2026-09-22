@@ -27,7 +27,7 @@ To guarantee zero downtime on election day, the application operates on a redund
 | Deployment Target | Branch | Role & Configuration |
 | :--- | :--- | :--- |
 | **GCP Compute Engine VM** | `main` | **Primary Production Server** (`search.yourdomain.com`). Daemonized with PM2, persistent SQLite with WAL (Write-Ahead Logging), NextAuth administration dashboard, rate limiting, and quota enforcement. |
-| **Vercel Cloud** | `vercel-backup` | **Instant Failover / Hot Standby**. Serverless architecture deployed automatically from the `vercel-backup` branch. If the VM ever suffers network interruptions or hardware maintenance, volunteers instantly switch to Vercel with zero downtime. |
+| **Vercel Cloud** | `vercel-backup` | **Instant Failover / Hot Standby**. Serverless edge deployment. Automatically pulls `voters.db` from secure Google Cloud Storage at build time (`scripts/fetch-db.js`) and persists live voting tallies to serverless PostgreSQL (Neon). |
 
 ```mermaid
 graph TD
@@ -35,8 +35,9 @@ graph TD
     B -->|Yes| C[GCP VM: nextjs-search-app on main branch]
     B -->|Network / Hardware Failover| D[Vercel: nextjs-search-app on vercel-backup branch]
     
-    C --> E[(SQLite DB with WAL Singleton)]
-    D --> F[(Serverless Storage / Read Fallback)]
+    C --> E[(Local SQLite with WAL Singleton)]
+    D -->|Build-time fetch| G[(Google Cloud Storage: voters.db)]
+    D --> F[(Serverless Postgres: Live Votes)]
 ```
 
 ---
@@ -232,17 +233,23 @@ export GEMINI_API_KEY="AIzaSyKey1...,AIzaSyKey2..."
 
 ### 6. Running the Web Application (`nextjs-search-app`)
 
+#### Local Development Setup
+1. Copy the example environment variables:
+   ```bash
+   cp .env.example nextjs-search-app/.env.local
+   ```
+2. Populate Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`).
+3. Ensure `nextjs-search-app/data/voters.db` is present locally, or provide `GCP_*` service account keys in `.env.local` to allow `scripts/fetch-db.js` to download it automatically.
+4. Launch the local dev server:
+   ```bash
+   cd nextjs-search-app
+   npm run dev
+   ```
+
+#### Production on GCP Compute Engine VM (via PM2)
 ```bash
 cd nextjs-search-app
-
-# Development mode
-npm run dev
-
-# Production build & start
 npm run build
-npm start
-
-# Production on VM with PM2 (daemonized)
 pm2 start npm --name "voter-app" -- start
 pm2 logs voter-app
 pm2 restart voter-app
@@ -252,6 +259,16 @@ pm2 save
 > [!WARNING]
 > **GCP VM Resizing Safety Rule (Static IP Reservation)**:
 > Before stopping the VM to resize from `e2-medium` to `e2-micro`, you **MUST** reserve the external IP as a **Static IP** in GCP Console (`VPC network` $\to$ `IP addresses`). If the IP changes, `nip.io`, Caddy SSL certificates, and Google OAuth callback redirect URIs will immediately break!
+
+#### Production Failover on Vercel (Automated Cloud Fetch)
+To deploy zero-storage SQLite on Vercel without committing binary databases to Git:
+1. Connect your repository to Vercel (set Root Directory to `nextjs-search-app`).
+2. In Vercel **Settings** $\to$ **Environment Variables**, add:
+   * `GCP_PROJECT_ID`: Your Google Cloud project ID
+   * `GCP_CLIENT_EMAIL`: Service Account email with `Storage Object Viewer` permissions
+   * `GCP_PRIVATE_KEY`: Service account private key string (including BEGIN/END headers)
+   * `GCS_BUCKET_NAME`: `ocr-voter-lists-archive`
+3. During build, `scripts/fetch-db.js` automatically downloads `voters.db` into `data/` before `next build` packages the serverless bundle. Live vote writes are persisted to Neon Serverless PostgreSQL (`DATABASE_URL`).
 
 ---
 
