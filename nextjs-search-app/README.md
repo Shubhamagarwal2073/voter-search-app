@@ -9,7 +9,7 @@ The core search engine and field operations web app for the **Voter Scrap** ecos
 This application is built to run in two deployment modes across two Git branches:
 
 ### 1. Primary Production: GCP Compute Engine (`main` branch)
-* **Domain:** `https://34-46-101-158.nip.io/`
+* **Domain:** `https://search.yourdomain.com/` (or your VM IP)
 * **Infrastructure:** Google Compute Engine `e2-micro` Linux VM with 2GB Swap Memory.
 * **Process Manager:** Daemonized with **PM2** (`pm2 start npm --name "voter-app" -- start`) for automated reboot recovery.
 * **Database Engine:** Local SQLite3 with `PRAGMA journal_mode = WAL` (Write-Ahead Logging) for extreme concurrency during morning voting rushes.

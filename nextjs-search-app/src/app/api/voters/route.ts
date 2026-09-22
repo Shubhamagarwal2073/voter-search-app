@@ -23,7 +23,15 @@ export async function GET(request: Request) {
   const rawQuery = (searchParams.get('q') || '').trim();
   const query = rawQuery.replace(/[%_]/g, '');
   const type = searchParams.get('type') || 'name'; // 'name', 'voter_id', 'house', 'serial'
-  let ward = searchParams.get('ward') || ''; // optional ward filter
+  const rawWard = (searchParams.get('ward') || '').trim();
+  let targetWard: number | null = null;
+  if (rawWard !== '') {
+    const parsed = parseInt(rawWard, 10);
+    if (isNaN(parsed) || parsed <= 0) {
+      return NextResponse.json({ success: false, error: 'Invalid ward parameter' }, { status: 400 });
+    }
+    targetWard = parsed;
+  }
 
   try {
     const session: any = await getServerSession(authOptions);
@@ -106,43 +114,43 @@ export async function GET(request: Request) {
         rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
       }
     } else {
-      // TIER 1 & 2: PUBLIC and GUESTS - Persistent IP tracking in SQLite
-      const userAgent = request.headers.get('user-agent') || 'unknown_ua';
-      const clientIdentifier = `${ip}|${userAgent}`;
+      // TIER 1 & 2: PUBLIC and GUESTS - Persistent IP or User Email tracking in SQLite
+      const isGuestUser = role === 'guest' || role === 'user';
+      const userEmail = session?.user?.email ? session.user.email.toLowerCase().trim() : null;
+      // Key by user email if authenticated, otherwise key by client IP
+      const clientIdentifier = (isGuestUser && userEmail) ? `user:${userEmail}` : `ip:${ip}`;
+
+      const quotaLimit = isGuestUser ? 4 : 2; // Public gets 2, Guests get 4 total
 
       const authDb = await getAuthDb();
       try {
         await authDb.run('CREATE TABLE IF NOT EXISTS public_limits (ip TEXT PRIMARY KEY, search_count INTEGER, last_reset INTEGER)');
 
-        const ipRecord = await authDb.get('SELECT * FROM public_limits WHERE ip = ?', [clientIdentifier]);
+        // Atomic upsert: increment count or reset count if 24h window has elapsed
+        await authDb.run(`
+          INSERT INTO public_limits (ip, search_count, last_reset) 
+          VALUES (?, 1, ?)
+          ON CONFLICT(ip) DO UPDATE SET 
+            search_count = CASE 
+              WHEN ? > last_reset + ? THEN 1 
+              ELSE search_count + 1 
+            END,
+            last_reset = CASE 
+              WHEN ? > last_reset + ? THEN ? 
+              ELSE last_reset 
+            END
+        `, [clientIdentifier, now, now, windowMs24h, now, windowMs24h, now]);
 
-        let currentCount = 0;
-        if (ipRecord) {
-          if (now > ipRecord.last_reset + windowMs24h) {
-            // Reset after 24h
-            await authDb.run('UPDATE public_limits SET search_count = 0, last_reset = ? WHERE ip = ?', [now, clientIdentifier]);
-          } else {
-            currentCount = ipRecord.search_count;
-          }
-        } else {
-          await authDb.run('INSERT INTO public_limits (ip, search_count, last_reset) VALUES (?, 0, ?)', [clientIdentifier, now]);
-        }
+        const record = await authDb.get('SELECT search_count FROM public_limits WHERE ip = ?', [clientIdentifier]);
+        const currentCount = record?.search_count || 1;
 
-        const quotaLimit = (role === 'guest' || role === 'user') ? 4 : 2; // Public gets 2, Guests get 4 total
-
-        if (currentCount >= quotaLimit) {
-          const code = role === 'guest' ? 'QUOTA_EXCEEDED_GUEST' : 'QUOTA_EXCEEDED_PUBLIC';
+        if (currentCount > quotaLimit) {
+          const code = isGuestUser ? 'QUOTA_EXCEEDED_GUEST' : 'QUOTA_EXCEEDED_PUBLIC';
           return NextResponse.json({ 
             success: false, 
             error: 'Daily search limit exceeded.', 
             code 
           }, { status: 429 });
-        }
-
-        try {
-          await authDb.run('UPDATE public_limits SET search_count = search_count + 1 WHERE ip = ?', [clientIdentifier]);
-        } catch (dbErr) {
-          console.error("Failed to update rate limit in DB:", dbErr);
         }
       } catch (authErr) {
         console.error("Auth DB rate limit error:", authErr);
@@ -158,8 +166,8 @@ export async function GET(request: Request) {
       if (allowed === 'all') {
         // Allowed all wards
       } else if (allowed && allowed.trim() !== '') {
-        allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
-        if (ward && !allowedArr.includes(parseInt(ward, 10))) {
+        allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10)).filter((w: number) => !isNaN(w));
+        if (targetWard !== null && !allowedArr.includes(targetWard)) {
           return NextResponse.json({ success: false, error: 'Forbidden ward access' }, { status: 403 });
         }
       } else {
@@ -168,8 +176,8 @@ export async function GET(request: Request) {
     } else if (role === 'user' || role === 'guest') {
       const allowed = session?.user?.allowed_wards;
       if (allowed && allowed !== 'all' && allowed.trim() !== '') {
-        allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
-        if (ward && !allowedArr.includes(parseInt(ward, 10))) {
+        allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10)).filter((w: number) => !isNaN(w));
+        if (targetWard !== null && !allowedArr.includes(targetWard)) {
           return NextResponse.json({ success: false, error: 'Forbidden ward access' }, { status: 403 });
         }
       }
@@ -177,29 +185,28 @@ export async function GET(request: Request) {
 
     const db = await getVotersDb();
 
-    try {
-      let voters = [];
-      let totalItems = 0;
-      let totalPages = 1;
-      let currentPage = page;
+    let voters = [];
+    let totalItems = 0;
+    let totalPages = 1;
+    let currentPage = page;
 
       // Build ward clause
       let wardClause = '';
       let wardParam: any[] = [];
 
-      if (ward) {
+      if (targetWard !== null) {
         wardClause = `AND ward = ?`;
-        wardParam = [parseInt(ward, 10)];
+        wardParam = [targetWard];
       } else if (allowedArr.length > 0) {
         wardClause = `AND ward IN (${allowedArr.map(() => '?').join(',')})`;
         wardParam = allowedArr;
       }
       
       // Helper function to execute SQL with COUNT(*) in parallel
-      const executePaginatedSql = async (baseQuery: string, countQuery: string, params: any[]) => {
+      const executePaginatedSql = async (baseQuery: string, countQuery: string, params: any[], baseOnlyParams: any[] = []) => {
         const [countResult, dataResult] = await Promise.all([
           db.get(countQuery, params),
-          db.all(`${baseQuery} LIMIT ? OFFSET ?`, [...params, limit, (Math.max(1, page) - 1) * limit])
+          db.all(`${baseQuery} LIMIT ? OFFSET ?`, [...params, ...baseOnlyParams, limit, (Math.max(1, page) - 1) * limit])
         ]);
         
         totalItems = countResult.total || 0;
@@ -209,7 +216,7 @@ export async function GET(request: Request) {
         // Re-fetch if the requested page was out of bounds
         if (page > totalPages) {
             const safeOffset = (currentPage - 1) * limit;
-            return await db.all(`${baseQuery} LIMIT ? OFFSET ?`, [...params, limit, safeOffset]);
+            return await db.all(`${baseQuery} LIMIT ? OFFSET ?`, [...params, ...baseOnlyParams, limit, safeOffset]);
         }
         return dataResult;
       };
@@ -285,13 +292,12 @@ export async function GET(request: Request) {
                 const inPlaceholders = topMatchedNames.map(() => '?').join(',');
                 
                 // Rank results so the #1 closest fuzzy match appears first
-                const orderCase = `ORDER BY CASE ${searchField} ` + 
-                  topMatchedNames.map((name: string, idx: number) => `WHEN '${name.replace(/'/g, "''")}' THEN ${idx}`).join(' ') + 
-                  ` ELSE ${topMatchedNames.length} END ASC`;
+                const orderPlaceholders = topMatchedNames.map((_, idx) => `WHEN ? THEN ${idx}`).join(' ');
+                const orderCase = `ORDER BY CASE ${searchField} ${orderPlaceholders} ELSE ${topMatchedNames.length} END ASC`;
 
                 const baseSql = `SELECT * FROM voters WHERE ${searchField} IN (${inPlaceholders}) ${wardClause} ${orderCase}`;
                 const countSql = `SELECT COUNT(*) as total FROM voters WHERE ${searchField} IN (${inPlaceholders}) ${wardClause}`;
-                voters = await executePaginatedSql(baseSql, countSql, [...topMatchedNames, ...wardParam]);
+                voters = await executePaginatedSql(baseSql, countSql, [...topMatchedNames, ...wardParam], topMatchedNames);
               } else {
                 voters = [];
                 totalItems = 0;
@@ -307,10 +313,10 @@ export async function GET(request: Request) {
         let countSql = `SELECT COUNT(*) as total FROM voters`;
         let params: any[] = [];
         
-        if (ward) {
+        if (targetWard !== null) {
           baseSql += ` WHERE ward = ?`;
           countSql += ` WHERE ward = ?`;
-          params = [parseInt(ward, 10)];
+          params = [targetWard];
         } else if (allowedArr.length > 0) {
           const inClause = `WHERE ward IN (${allowedArr.map(() => '?').join(',')})`;
           baseSql += ` ${inClause}`;

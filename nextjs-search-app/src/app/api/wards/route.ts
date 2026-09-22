@@ -24,13 +24,13 @@ export async function GET() {
         if (!allowed || allowed.trim() === '') {
           wardNumbers = []; // Paid users with no wards assigned see nothing
         } else if (allowed !== 'all') {
-          const allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
+          const allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10)).filter((w: number) => !isNaN(w));
           wardNumbers = wardNumbers.filter(w => allowedArr.includes(w));
         }
       } else if (role === 'user' || role === 'guest') {
         // Guests can see all wards by default, unless specifically restricted
         if (allowed && allowed !== 'all' && allowed.trim() !== '') {
-          const allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10));
+          const allowedArr = allowed.split(',').map((w: string) => parseInt(w.trim(), 10)).filter((w: number) => !isNaN(w));
           wardNumbers = wardNumbers.filter(w => allowedArr.includes(w));
         }
       }

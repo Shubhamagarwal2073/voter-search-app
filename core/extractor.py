@@ -419,7 +419,7 @@ def parse_pdf(pdf_path: str, ward: int = None, start_page_arg: int = 1, end_page
                     all_voters.extend(voters)
             except Exception as err:
                 print(f"  [ERROR] Worker thread raised exception: {err}")
-                insert_voters(voters)
+                continue
 
     try:
         temp_dir.rmdir()

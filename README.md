@@ -26,7 +26,7 @@ To guarantee zero downtime on election day, the application operates on a redund
 
 | Deployment Target | Branch | Role & Configuration |
 | :--- | :--- | :--- |
-| **GCP Compute Engine VM** | `main` | **Primary Production Server** (`34-46-101-158.nip.io`). Daemonized with PM2, persistent SQLite with WAL (Write-Ahead Logging), NextAuth administration dashboard, rate limiting, and quota enforcement. |
+| **GCP Compute Engine VM** | `main` | **Primary Production Server** (`search.yourdomain.com`). Daemonized with PM2, persistent SQLite with WAL (Write-Ahead Logging), NextAuth administration dashboard, rate limiting, and quota enforcement. |
 | **Vercel Cloud** | `vercel-backup` | **Instant Failover / Hot Standby**. Serverless architecture deployed automatically from the `vercel-backup` branch. If the VM ever suffers network interruptions or hardware maintenance, volunteers instantly switch to Vercel with zero downtime. |
 
 ```mermaid
@@ -141,7 +141,7 @@ Voter_scrap/
 | **Build & Run Next.js (Production)** | `cd nextjs-search-app && npm run build && npm start` | VM / Local |
 | **Check server status & live logs** | `pm2 status` and `pm2 logs voter-app` | GCP VM |
 | **Restart server after code changes** | `pm2 restart voter-app` | GCP VM |
-| **Run Caddy HTTPS reverse proxy** | `caddy reverse-proxy --from https://34-46-101-158.nip.io --to 127.0.0.1:3000` | GCP VM |
+| **Run Caddy HTTPS reverse proxy** | `caddy reverse-proxy --from https://search.yourdomain.com --to 127.0.0.1:3000` | GCP VM |
 | **Deploy failover updates to Vercel** | `git checkout vercel-backup && git merge main && git push origin vercel-backup` | Local |
 
 ---

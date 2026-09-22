@@ -26,6 +26,22 @@ voter-portal-frontend/.env.development.local
 voter-portal-frontend/.env.test.local
 voter-portal-frontend/.env.production.local
 
+# Databases & SQLite
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+nextjs-search-app/data/*.db
+
+# Outputs & Extracted Data
+outputs/
+outputs/json/
+outputs/excel_csv/
+
+# Agents & Secret Configs
+.agents/
+.freebuff/
+
 # Temporary Files and Big Data
 *.pdf
 temp_pages/
